@@ -51,7 +51,24 @@ $g2.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualit
 $g2.DrawImage($img, 0, 0, 32, 32)
 $pngOut = Join-Path $buildDir 'icon.png'
 $bmp2.Save($pngOut, [System.Drawing.Imaging.ImageFormat]::Png)
-$g2.Dispose(); $bmp2.Dispose(); $img.Dispose()
+$g2.Dispose(); $bmp2.Dispose()
+
+# 圆形大肥鱼头像（安装界面用，256px 透明底 + 白色描边）
+$logoOut = Join-Path $buildDir 'logo.png'
+$logoBmp = New-Object System.Drawing.Bitmap 256, 256
+$g3 = [System.Drawing.Graphics]::FromImage($logoBmp)
+$g3.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+$g3.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+$path3 = New-Object System.Drawing.Drawing2D.GraphicsPath
+$path3.AddEllipse(4, 4, 248, 248)
+$g3.SetClip($path3)
+$g3.DrawImage($img, 4, 4, 248, 248)
+$g3.ResetClip()
+$pen3 = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 8)
+$g3.DrawEllipse($pen3, 4, 4, 248, 248)
+$logoBmp.Save($logoOut, [System.Drawing.Imaging.ImageFormat]::Png)
+$pen3.Dispose(); $path3.Dispose(); $g3.Dispose(); $logoBmp.Dispose(); $img.Dispose()
+Write-Host "    圆形 Logo：$logoOut"
 
 Write-Host '==> 2/5 同步 Electron 桌面端到发行根'
 # 复制 electron 素材（排除 resources，单独同步）
@@ -172,7 +189,7 @@ $refs3 = @(
     '/r:Microsoft.CSharp.dll'
 )
 $outExe = 'D:\DeepSeek Harness\deepseek-harness-client.exe'
-& $csc /nologo /target:winexe /optimize+ "/win32icon:$iconOut" "/win32manifest:$srcDir\app.manifest" $refs3 "/resource:$payload,DSHPayload.zip" "/out:$outExe" "$srcDir\Installer.cs"
+& $csc /nologo /target:winexe /optimize+ "/win32icon:$iconOut" "/win32manifest:$srcDir\app.manifest" $refs3 "/resource:$payload,DSHPayload.zip" "/resource:$buildDir\logo.png,DSHLogo.png" "/out:$outExe" "$srcDir\Installer.cs" "$srcDir\InstallerUI.cs"
 if ($LASTEXITCODE -ne 0) { throw '安装程序编译失败' }
 # 安装器也补上版本信息（否则右键属性显示 0.0.0.0）
 & $rcedit $outExe `
