@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('dsh', {
   status: () => ipcRenderer.invoke('app:status'),
   start: () => ipcRenderer.invoke('app:start'),
   submitKey: (key) => ipcRenderer.invoke('app:submit-key', key),
+  keyInfo: () => ipcRenderer.invoke('app:key-info'),
+  checkBalance: () => ipcRenderer.invoke('app:check-balance'),
   logTail: () => ipcRenderer.invoke('app:log-tail'),
   log: (msg) => ipcRenderer.send('app:log', msg),
 });

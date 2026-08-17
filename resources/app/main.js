@@ -13,6 +13,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 
 // ---------------- 路径 ----------------
 const ROOT = path.dirname(path.dirname(app.getAppPath())); // 客户端根目录（resources 的上一级）
@@ -84,6 +85,26 @@ function writeKey(key) {
   }
   if (hit >= 0) lines[hit] = rendered; else lines.push(rendered);
   fs.writeFileSync(CRED_FILE, lines.join('\r\n'));
+}
+
+// 读取 Key（不回显明文）
+function readKey() {
+  try {
+    if (!fs.existsSync(CRED_FILE)) return null;
+    const lines = stripBom(fs.readFileSync(CRED_FILE, 'utf8')).split(/\r?\n/);
+    for (const l of lines) {
+      const m = l.match(/^\s*DEEPSEEK_API_KEY\s*:\s*(\S+)/);
+      if (m && m[1]) return m[1];
+    }
+  } catch (e) { }
+  return null;
+}
+
+// Key 掩码显示：sk-***abcd
+function maskKey(k) {
+  if (!k) return '';
+  if (k.length <= 8) return k.slice(0, 2) + '***';
+  return k.slice(0, 3) + '***' + k.slice(-4);
 }
 
 // ---------------- 服务 ----------------
@@ -301,6 +322,50 @@ function initIpc() {
     } catch (err) {
       return { ok: false, error: String(err) };
     }
+  });
+
+  // 工具箱：Key 状态（只返回掩码，不回显明文）
+  ipcMain.handle('app:key-info', () => {
+    const k = readKey();
+    return { hasKey: !!k, masked: k ? maskKey(k) : '' };
+  });
+
+  // 工具箱：查询 DeepSeek 余额（https://api.deepseek.com/user/balance）
+  ipcMain.handle('app:check-balance', async () => {
+    const k = readKey();
+    if (!k) return { ok: false, error: '尚未配置 API Key' };
+    return new Promise((resolve) => {
+      let origin = 'https://api.deepseek.com';
+      try {
+        if (baseURL && /deepseek\.com/i.test(baseURL)) origin = new URL(baseURL).origin;
+      } catch (e) { }
+      const req = https.get(origin + '/user/balance', {
+        headers: { 'Authorization': 'Bearer ' + k, 'Accept': 'application/json' },
+        timeout: 10000,
+      }, (res) => {
+        let body = '';
+        res.on('data', (d) => { body += d; if (body.length > 200000) req.destroy(); });
+        res.on('end', () => {
+          try {
+            const j = JSON.parse(body);
+            if (res.statusCode !== 200) {
+              const msg = (j && j.error && j.error.message) || body.slice(0, 200);
+              return resolve({ ok: false, error: '查询失败(' + res.statusCode + ')：' + msg });
+            }
+            const infos = (j.balance_infos || []).map((b) => ({
+              currency: b.currency,
+              total: b.total_balance,
+              granted: b.granted_balance,
+              topped: b.topped_up_balance,
+            }));
+            resolve({ ok: true, available: !!j.is_available, infos });
+          } catch (e) { resolve({ ok: false, error: '响应解析失败' }); }
+        });
+        res.on('error', () => resolve({ ok: false, error: '网络错误' }));
+      });
+      req.on('error', () => resolve({ ok: false, error: '无法连接 DeepSeek（请检查网络或代理）' }));
+      req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: '请求超时' }); });
+    });
   });
 
   ipcMain.handle('app:log-tail', () => logTail());

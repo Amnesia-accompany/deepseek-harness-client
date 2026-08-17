@@ -70,6 +70,91 @@ $('errRetry').onclick = async () => {
   loadPage();
 };
 
+// ---------------- API Key / 余额面板 ----------------
+let panelOpen = false;
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function refreshKeyInfo() {
+  try {
+    const info = await window.dsh.keyInfo();
+    const el = $('pKeyState');
+    if (info.hasKey) {
+      el.textContent = '已配置  ' + info.masked;
+      el.className = 'ok';
+    } else {
+      el.textContent = '未配置';
+      el.className = 'bad';
+    }
+  } catch (e) {
+    $('pKeyState').textContent = '查询失败';
+  }
+}
+
+$('keyBtn').onclick = () => {
+  panelOpen = !panelOpen;
+  $('panel').classList.toggle('show', panelOpen);
+  $('keyBtn').classList.toggle('active', panelOpen);
+  if (panelOpen) refreshKeyInfo();
+};
+
+// 点击面板外部关闭
+document.addEventListener('click', (e) => {
+  if (panelOpen && !e.target.closest('#panel') && e.target.id !== 'keyBtn') {
+    panelOpen = false;
+    $('panel').classList.remove('show');
+    $('keyBtn').classList.remove('active');
+  }
+});
+
+$('pKeySave').onclick = async () => {
+  const key = $('pKeyInput').value.trim();
+  if (!key) {
+    refreshKeyInfo();
+    return;
+  }
+  const btn = $('pKeySave');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  const r = await window.dsh.submitKey(key);
+  if (r.ok) {
+    $('pKeyInput').value = '';
+    btn.textContent = '已保存 ✓';
+    refreshKeyInfo();
+  } else {
+    btn.textContent = '失败';
+    $('pKeyState').textContent = '保存失败：' + r.error;
+    $('pKeyState').className = 'bad';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = '保存'; }, 1500);
+};
+
+$('pBalanceBtn').onclick = async () => {
+  const btn = $('pBalanceBtn');
+  btn.disabled = true;
+  btn.textContent = '查询中…';
+  const r = await window.dsh.checkBalance();
+  const box = $('pBalance');
+  if (!r.ok) {
+    box.innerHTML = '<span class="bad">' + esc(r.error) + '</span>';
+  } else {
+    let html = '';
+    if (!r.available) html += '<span class="bad">账户不可用</span><br>';
+    (r.infos || []).forEach((b) => {
+      const sym = b.currency === 'CNY' ? '¥' : (b.currency === 'USD' ? '$' : b.currency + ' ');
+      html += '<div class="amt">' + sym + esc(b.total) + '</div>' +
+        '<div class="small">' + esc(b.currency) + ' · 赠送 ' + sym + esc(b.granted) +
+        ' · 充值 ' + sym + esc(b.topped) + '</div>';
+    });
+    if (!html) html = '（无余额数据）';
+    box.innerHTML = html;
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = '查询余额'; }, 2000);
+};
+
 // 主进程启动服务后页面就绪
 window.dsh.isMaximized().then(() => { }).catch(() => { });
 start();
