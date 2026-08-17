@@ -1,8 +1,8 @@
-# ---------- 依赖（npm install 生成） ----------
+﻿# ---------- 渚濊禆锛坣pm install 鐢熸垚锛?----------
 app/node_modules/
 
-# ---------- Electron 运行库（构建时从素材库同步，可再生） ----------
-蓝色大肥鱼DSH.exe
+# ---------- Electron 杩愯搴擄紙鏋勫缓鏃朵粠绱犳潗搴撳悓姝ワ紝鍙啀鐢燂級 ----------
+钃濊壊澶ц偉楸糄SH.exe
 launcher.exe
 uninstaller.exe
 chrome_*.pak
@@ -18,14 +18,15 @@ LICENSES.chromium.html
 locales/
 resources/default_app.asar
 
-# ---------- 构建产物 ----------
+# ---------- 鏋勫缓浜х墿 ----------
 build/payload.zip
 build/app.ico
 build/icon.png
+build/icon-*.png
 build/electron-dist/
 build/rcedit-x64.exe
 
-# ---------- 运行数据 ----------
+# ---------- 杩愯鏁版嵁 ----------
 data/config.json
 data/server.log
 data/icon.ico
