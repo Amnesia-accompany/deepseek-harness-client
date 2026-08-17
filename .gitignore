@@ -22,6 +22,7 @@ resources/default_app.asar
 build/payload.zip
 build/app.ico
 build/icon.png
+build/logo.png
 build/icon-*.png
 build/electron-dist/
 build/rcedit-x64.exe
