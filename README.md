@@ -1,4 +1,4 @@
-﻿# DeepSeek Harness 懒人客户端 🐟
+# DeepSeek Harness 懒人客户端 🐟
 
 基于开源项目 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的一键部署 Windows 客户端：**下载一个 exe，双击安装，只需输入你自己的 API Key**。
 
@@ -55,7 +55,7 @@
 - **客户端不预置任何人的 Key**，安装包里没有、也不会携带任何密钥
 - Key 只保存在**运行者自己电脑**的 `C:\Users\你的用户名\.dsh\.credentials.yaml`
 - 首次打开**必须输入自己的 Key**，否则无法使用
-- 换 Key：运行安装目录里的 `重新配置APIKey.bat`
+- 换 Key / 查余额：打开客户端后，点标题栏右侧的 🔑 按钮，在面板里直接修改 Key 或查询 DeepSeek 余额
 
 ---
 

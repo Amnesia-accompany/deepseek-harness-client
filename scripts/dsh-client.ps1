@@ -506,7 +506,7 @@ switch ($Mode) {
             Write-Step '首次使用，需要配置 API Key'
             Configure-Api
         } else {
-            Write-Ok '已检测到 API Key，跳过配置（如需修改请用 重新配置APIKey.bat）'
+            Write-Ok '已检测到 API Key，跳过配置（如需修改请打开客户端，点标题栏右侧 🔑 按钮）'
         }
         New-Shortcut
         Start-Server
