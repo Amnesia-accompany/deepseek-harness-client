@@ -53,22 +53,24 @@ $pngOut = Join-Path $buildDir 'icon.png'
 $bmp2.Save($pngOut, [System.Drawing.Imaging.ImageFormat]::Png)
 $g2.Dispose(); $bmp2.Dispose()
 
-# 圆形大肥鱼头像（安装界面用，256px 透明底 + 白色描边）
+# 品牌 Logo（安装界面左侧栏用，256px 圆角方形 + 白色细描边）
 $logoOut = Join-Path $buildDir 'logo.png'
 $logoBmp = New-Object System.Drawing.Bitmap 256, 256
 $g3 = [System.Drawing.Graphics]::FromImage($logoBmp)
 $g3.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $g3.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
 $path3 = New-Object System.Drawing.Drawing2D.GraphicsPath
-$path3.AddEllipse(4, 4, 248, 248)
+$path3.AddArc(6, 6, 48, 48, 180, 90); $path3.AddArc(202, 6, 48, 48, 270, 90)
+$path3.AddArc(202, 202, 48, 48, 0, 90); $path3.AddArc(6, 202, 48, 48, 90, 90)
+$path3.CloseFigure()
 $g3.SetClip($path3)
-$g3.DrawImage($img, 4, 4, 248, 248)
+$g3.DrawImage($img, 6, 6, 244, 244)
 $g3.ResetClip()
-$pen3 = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 8)
-$g3.DrawEllipse($pen3, 4, 4, 248, 248)
+$pen3 = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 6)
+$g3.DrawPath($pen3, $path3)
 $logoBmp.Save($logoOut, [System.Drawing.Imaging.ImageFormat]::Png)
 $pen3.Dispose(); $path3.Dispose(); $g3.Dispose(); $logoBmp.Dispose(); $img.Dispose()
-Write-Host "    圆形 Logo：$logoOut"
+Write-Host "    品牌 Logo：$logoOut"
 
 # ---- 微型功能图标（安装界面用，32x32 PNG） ----
 function New-IconPng {

@@ -1,8 +1,8 @@
 ﻿// ============================================================
-//  DeepSeek Harness 客户端 - 安装界面（可爱现代风 v2）
+//  DeepSeek Harness 客户端 - 安装界面（Node.js 风格）
 //  InstallerUI.cs
-//  包含：圆角按钮(带投影)/圆角卡片(带投影)/圆角进度条(百分比)
-//        图标复选框/步骤徽章(连线+光晕)/渐变背景
+//  经典安装向导布局：顶部绿色标题条 + 左侧深绿品牌栏
+//  + 右侧白色内容区 + 底部按钮栏（仿 Node.js 官方安装器）
 //  依赖：InstallerLogic（Installer.cs）
 //  嵌入资源：DSHLogo.png / DSHIconDesktop.png / DSHIconRocket.png / DSHIconNode.png
 // ============================================================
@@ -56,9 +56,9 @@ namespace DSHInstaller {
         public static Image Logo { get { if (logo == null) logo = Load("DSHLogo.png"); return logo; } }
     }
 
-    // ---------- 圆角按钮（带投影） ----------
+    // ---------- 圆角按钮 ----------
     class RoundedButton : Button {
-        public int Radius = 12;
+        public int Radius = 6;
         public Color HoverColor = Color.Empty;
         bool hovering;
 
@@ -75,14 +75,11 @@ namespace DSHInstaller {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
             Color back = BackColor;
-            if (!Enabled) back = Color.FromArgb(198, 210, 228);
+            if (!Enabled) back = Color.FromArgb(185, 195, 205);
             else if (hovering && HoverColor != Color.Empty) back = HoverColor;
-            // 投影
-            using (GraphicsPath sh = Rounded.Path(new Rectangle(0, 2, Width - 1, Height - 1), Radius)) {
-                using (SolidBrush sb = new SolidBrush(Color.FromArgb(22, 30, 80, 150))) e.Graphics.FillPath(sb, sh);
-            }
             using (GraphicsPath p = Rounded.Path(rect, Radius)) {
                 using (SolidBrush b = new SolidBrush(back)) e.Graphics.FillPath(b, p);
+                if (Enabled) using (Pen bp = new Pen(Color.FromArgb(40, 0, 0, 0), 1)) e.Graphics.DrawPath(bp, p);
             }
             TextRenderer.DrawText(e.Graphics, Text, Font, rect,
                 Enabled ? ForeColor : Color.White,
@@ -90,10 +87,10 @@ namespace DSHInstaller {
         }
     }
 
-    // ---------- 圆角卡片（带投影） ----------
+    // ---------- 圆角卡片 ----------
     class RoundedCard : Panel {
-        public int Radius = 14;
-        public Color BorderColor = Color.FromArgb(214, 232, 255);
+        public int Radius = 6;
+        public Color BorderColor = Color.FromArgb(215, 220, 226);
 
         public RoundedCard() {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
@@ -103,17 +100,13 @@ namespace DSHInstaller {
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
-            // 投影
-            using (GraphicsPath sh = Rounded.Path(new Rectangle(0, 3, Width - 1, Height - 1), Radius)) {
-                using (SolidBrush sb = new SolidBrush(Color.FromArgb(16, 40, 90, 170))) e.Graphics.FillPath(sb, sh);
-            }
             using (GraphicsPath p = Rounded.Path(rect, Radius)) {
                 using (SolidBrush b = new SolidBrush(Color.White)) e.Graphics.FillPath(b, p);
                 using (Pen pen = new Pen(BorderColor)) e.Graphics.DrawPath(pen, p);
             }
             if (!string.IsNullOrEmpty(Text)) {
-                using (SolidBrush tb = new SolidBrush(Color.FromArgb(120, 136, 165))) {
-                    e.Graphics.DrawString(Text, Font, tb, 16, 10);
+                using (SolidBrush tb = new SolidBrush(Color.FromArgb(90, 100, 112))) {
+                    e.Graphics.DrawString(Text, Font, tb, 12, 8);
                 }
             }
         }
@@ -159,7 +152,7 @@ namespace DSHInstaller {
             Rectangle track = new Rectangle(0, 2, Width - 1, Height - 5);
             int rad = track.Height / 2;
             using (GraphicsPath p = Rounded.Path(track, rad)) {
-                using (SolidBrush b = new SolidBrush(Color.FromArgb(222, 236, 255))) e.Graphics.FillPath(b, p);
+                using (SolidBrush b = new SolidBrush(Color.FromArgb(224, 228, 234))) e.Graphics.FillPath(b, p);
             }
             if (marquee) {
                 int mw = Math.Max(80, Width / 3);
@@ -167,7 +160,7 @@ namespace DSHInstaller {
                 if (x > Width) x = marqueeOffset - mw - 260;
                 using (GraphicsPath p = Rounded.Path(new Rectangle(x, 2, mw, Height - 5), rad)) {
                     using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(x, 2, mw, Height - 5),
-                        Color.FromArgb(120, 180, 255), Color.FromArgb(46, 124, 246), 0f)) {
+                        Color.FromArgb(102, 187, 106), Color.FromArgb(46, 125, 50), 0f)) {
                         e.Graphics.FillPath(b, p);
                     }
                 }
@@ -177,23 +170,22 @@ namespace DSHInstaller {
             if (fillW > 6) {
                 using (GraphicsPath p = Rounded.Path(new Rectangle(0, 2, fillW, Height - 5), rad)) {
                     using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(0, 2, fillW, Height - 5),
-                        Color.FromArgb(120, 180, 255), Color.FromArgb(46, 124, 246), 0f)) {
+                        Color.FromArgb(102, 187, 106), Color.FromArgb(46, 125, 50), 0f)) {
                         e.Graphics.FillPath(b, p);
                     }
                 }
             }
-            // 百分比文字
             if (!marquee && value > 0 && value < 100) {
                 string pct = value + "%";
                 SizeF sz = e.Graphics.MeasureString(pct, Font);
-                using (SolidBrush tb = new SolidBrush(Color.FromArgb(90, 120, 170))) {
+                using (SolidBrush tb = new SolidBrush(Color.FromArgb(70, 90, 75))) {
                     e.Graphics.DrawString(pct, Font, tb, Width - sz.Width - 4, 2);
                 }
             }
         }
     }
 
-    // ---------- 图标复选框（自绘：勾选框 + 图标 + 文字） ----------
+    // ---------- 图标复选框（自绘） ----------
     class IconCheckBox : Control {
         Image icon;
         bool checkedState;
@@ -220,21 +212,16 @@ namespace DSHInstaller {
 
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            // 悬停底色
             if (hovering) {
-                using (GraphicsPath hp = Rounded.Path(new Rectangle(0, 1, Width - 1, Height - 3), 8)) {
-                    using (SolidBrush hb = new SolidBrush(Color.FromArgb(28, 214, 232, 255))) e.Graphics.FillPath(hb, hp);
+                using (GraphicsPath hp = Rounded.Path(new Rectangle(0, 1, Width - 1, Height - 3), 6)) {
+                    using (SolidBrush hb = new SolidBrush(Color.FromArgb(24, 67, 160, 71))) e.Graphics.FillPath(hb, hp);
                 }
             }
-            // 图标
-            if (icon != null) {
-                e.Graphics.DrawImage(icon, new Rectangle(6, 5, 20, 20));
-            }
-            // 勾选框
+            if (icon != null) e.Graphics.DrawImage(icon, new Rectangle(6, 5, 20, 20));
             Rectangle box = new Rectangle(32, 5, 18, 18);
-            using (GraphicsPath bp = Rounded.Path(box, 5)) {
+            using (GraphicsPath bp = Rounded.Path(box, 4)) {
                 if (checkedState) {
-                    using (SolidBrush bb = new SolidBrush(Color.FromArgb(46, 124, 246))) e.Graphics.FillPath(bb, bp);
+                    using (SolidBrush bb = new SolidBrush(Color.FromArgb(67, 160, 71))) e.Graphics.FillPath(bb, bp);
                     using (Pen wp = new Pen(Color.White, 2.2f)) {
                         e.Graphics.DrawLine(wp, box.X + 4, box.Y + 9, box.X + 8, box.Y + 13);
                         e.Graphics.DrawLine(wp, box.X + 8, box.Y + 13, box.X + 14, box.Y + 5);
@@ -242,18 +229,17 @@ namespace DSHInstaller {
                 }
                 else {
                     using (SolidBrush bb = new SolidBrush(Color.White)) e.Graphics.FillPath(bb, bp);
-                    using (Pen gp = new Pen(Color.FromArgb(170, 190, 220), 1.4f)) e.Graphics.DrawPath(gp, bp);
+                    using (Pen gp = new Pen(Color.FromArgb(170, 182, 190), 1.4f)) e.Graphics.DrawPath(gp, bp);
                 }
             }
-            // 文字
             TextRenderer.DrawText(e.Graphics, Text, Font,
                 new Rectangle(58, 0, Width - 60, Height),
-                Color.FromArgb(60, 75, 105),
+                Color.FromArgb(70, 80, 90),
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
     }
 
-    // ---------- 步骤徽章（连线 + 光晕） ----------
+    // ---------- 步骤徽章（连线） ----------
     class StepBadge : Control {
         public string StepText = "";
         public int State; // 0 未到 1 当前 2 完成
@@ -266,24 +252,15 @@ namespace DSHInstaller {
 
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            // 连接线（徽章右侧）
             if (BadgeNumber < 4) {
                 int lineY = 13;
-                Color lc = State == 2 ? Color.FromArgb(39, 174, 96) : Color.FromArgb(214, 224, 240);
-                using (Pen lp = new Pen(lc, 2.4f)) {
-                    e.Graphics.DrawLine(lp, 28, lineY, Width - 6, lineY);
-                }
+                Color lc = State == 2 ? Color.FromArgb(67, 160, 71) : Color.FromArgb(214, 220, 226);
+                using (Pen lp = new Pen(lc, 2.2f)) e.Graphics.DrawLine(lp, 28, lineY, Width - 6, lineY);
             }
             Rectangle badge = new Rectangle(0, 1, 26, 26);
-            Color bc = Color.FromArgb(214, 224, 240);
-            if (State == 1) bc = Color.FromArgb(46, 124, 246);
-            else if (State == 2) bc = Color.FromArgb(39, 174, 96);
-            // 当前步骤光晕
-            if (State == 1) {
-                using (GraphicsPath gp = Rounded.Path(new Rectangle(-2, -1, 30, 30), 15)) {
-                    using (SolidBrush gb = new SolidBrush(Color.FromArgb(40, 46, 124, 246))) e.Graphics.FillPath(gb, gp);
-                }
-            }
+            Color bc = Color.FromArgb(210, 216, 222);
+            if (State == 1) bc = Color.FromArgb(46, 125, 50);
+            else if (State == 2) bc = Color.FromArgb(67, 160, 71);
             using (GraphicsPath p = Rounded.Path(badge, 13)) {
                 using (SolidBrush b = new SolidBrush(bc)) e.Graphics.FillPath(b, p);
             }
@@ -291,14 +268,14 @@ namespace DSHInstaller {
             using (SolidBrush tb = new SolidBrush(Color.White)) {
                 e.Graphics.DrawString(mark, new Font(Font.FontFamily, 9F, FontStyle.Bold), tb, badge.X + 6, badge.Y + 3);
             }
-            Color tc = State == 0 ? Color.FromArgb(150, 160, 180) : Color.FromArgb(40, 58, 90);
+            Color tc = State == 0 ? Color.FromArgb(140, 150, 160) : Color.FromArgb(50, 60, 70);
             using (SolidBrush tb = new SolidBrush(tc)) {
                 e.Graphics.DrawString(StepText, new Font(Font.FontFamily, 9F), tb, 34, 5);
             }
         }
     }
 
-    // ==================== 安装界面 ====================
+    // ==================== 安装界面（Node.js 风格） ====================
     class InstallForm : Form {
         // ---- 无边框拖动 ----
         [DllImport("user32.dll")]
@@ -320,122 +297,165 @@ namespace DSHInstaller {
         RoundedProgressBar prog;
         Label lblStatus;
         StepBadge[] badges;
-        Label title;
-        Label sub;
         bool hasNode;
 
-        static readonly Color MainBlue = Color.FromArgb(46, 124, 246);
-        static readonly Color MainBlueHover = Color.FromArgb(70, 145, 255);
-        static readonly Color TitleDark = Color.FromArgb(30, 46, 80);
-        static readonly Color TextGray = Color.FromArgb(120, 136, 165);
+        static readonly Color TopGreen = Color.FromArgb(46, 125, 50);
+        static readonly Color TopGreenDark = Color.FromArgb(27, 94, 32);
+        static readonly Color SideGreen = Color.FromArgb(24, 74, 28);
+        static readonly Color BtnGreen = Color.FromArgb(67, 160, 71);
+        static readonly Color BtnGreenHover = Color.FromArgb(76, 175, 80);
+        static readonly Color TitleDark = Color.FromArgb(51, 51, 51);
+        static readonly Color TextGray = Color.FromArgb(110, 118, 126);
+
+        const int WIN_W = 660;
+        const int WIN_H = 560;
+        const int SIDE_W = 165;
+        const int TOP_H = 44;
+        const int BOT_H = 60;
+        const int CONTENT_X = 190;
 
         static Font UiFont(float size, FontStyle style) {
             try { return new Font("Microsoft YaHei UI", size, style); }
             catch { return new Font(FontFamily.GenericSansSerif, size, style); }
         }
 
-        // 深蓝色圆形 Logo（渐变深蓝紫圆 + 白色 DSH 文字）
-        static Bitmap MakeDarkLogo() {
-            Bitmap b = new Bitmap(108, 108);
-            Graphics g = Graphics.FromImage(b);
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using (LinearGradientBrush lb = new LinearGradientBrush(
-                new Rectangle(0, 0, 108, 108),
-                Color.FromArgb(84, 104, 168), Color.FromArgb(44, 58, 106), 45f)) {
-                g.FillEllipse(lb, 0, 0, 108, 108);
+        // 渐变 Panel
+        class GradientPanel : Panel {
+            public Color C1 = Color.White;
+            public Color C2 = Color.White;
+            public float Angle = 90f;
+            public GradientPanel() {
+                SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             }
-            // 顶部高光
-            using (SolidBrush hl = new SolidBrush(Color.FromArgb(36, 255, 255, 255))) {
-                g.FillEllipse(hl, 10, 8, 88, 30);
+            protected override void OnPaint(PaintEventArgs e) {
+                using (LinearGradientBrush b = new LinearGradientBrush(ClientRectangle, C1, C2, Angle)) {
+                    e.Graphics.FillRectangle(b, ClientRectangle);
+                }
             }
-            string s = "DSH";
-            using (Font f = new Font("Segoe UI", 30F, FontStyle.Bold)) {
-                SizeF sz = g.MeasureString(s, f);
-                g.DrawString(s, f, Brushes.White, (108 - sz.Width) / 2, (108 - sz.Height) / 2);
-            }
-            g.Dispose();
-            return b;
         }
 
         public InstallForm() {
             Text = "DeepSeek Harness 安装";
             Font = UiFont(9F, FontStyle.Regular);
-            ClientSize = new Size(600, 706);
-            FormBorderStyle = FormBorderStyle.None;   // 无边框自绘
+            ClientSize = new Size(WIN_W, WIN_H);
+            FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
             DoubleBuffered = true;
 
-            // ---- 自绘标题栏（拖拽 + 关闭） ----
             MouseDown += OnDragMouseDown;
+
+            // ---- 顶部绿色条（纯色，与文字同色避免白底） ----
+            Panel topBar = new Panel();
+            topBar.BackColor = TopGreen;
+            topBar.Location = new Point(0, 0);
+            topBar.Size = new Size(WIN_W, TOP_H);
+            Controls.Add(topBar);
+
+            Label topTitle = new Label();
+            topTitle.Text = "   DeepSeek Harness v0.1.1 安装程序";
+            topTitle.BackColor = TopGreen;
+            topTitle.ForeColor = Color.White;
+            topTitle.Font = UiFont(10F, FontStyle.Regular);
+            topTitle.AutoSize = true;
+            topTitle.Location = new Point(16, 12);
+            topBar.Controls.Add(topTitle);
 
             btnClose = new RoundedButton();
             btnClose.Text = "✕";
-            btnClose.Size = new Size(30, 26);
-            btnClose.Location = new Point(ClientSize.Width - 40, 7);
-            btnClose.BackColor = Color.Transparent;
-            btnClose.ForeColor = Color.FromArgb(90, 105, 130);
-            btnClose.HoverColor = Color.FromArgb(231, 76, 60);
+            btnClose.Size = new Size(30, 24);
+            btnClose.Location = new Point(WIN_W - 40, 9);
+            btnClose.BackColor = TopGreen;
+            btnClose.ForeColor = Color.White;
+            btnClose.HoverColor = Color.FromArgb(180, 60, 50);
             btnClose.Font = UiFont(9F, FontStyle.Regular);
             btnClose.Click += delegate { Close(); };
-            Controls.Add(btnClose);
+            topBar.Controls.Add(btnClose);
 
-            Label barTitle = new Label();
-            barTitle.Text = "  DeepSeek Harness 安装";
-            barTitle.ForeColor = Color.FromArgb(70, 85, 110);
-            barTitle.Font = UiFont(9F, FontStyle.Regular);
-            barTitle.AutoSize = true;
-            barTitle.Location = new Point(14, 9);
-            Controls.Add(barTitle);
+            // ---- 左侧深绿品牌栏（纯色） ----
+            Panel sideBar = new Panel();
+            sideBar.BackColor = SideGreen;
+            sideBar.Location = new Point(0, TOP_H);
+            sideBar.Size = new Size(SIDE_W, WIN_H - TOP_H - BOT_H);
+            Controls.Add(sideBar);
 
-            // ---- 深蓝色圆形 Logo（自绘：渐变深蓝圆 + 白色 DSH） ----
             PictureBox logo = new PictureBox();
+            logo.BackColor = SideGreen;
             logo.SizeMode = PictureBoxSizeMode.Zoom;
-            logo.Size = new Size(108, 108);
-            logo.Location = new Point((ClientSize.Width - 108) / 2, 46);
-            logo.Image = MakeDarkLogo();
-            Controls.Add(logo);
+            logo.Size = new Size(112, 112);
+            logo.Location = new Point((SIDE_W - 112) / 2, 66);
+            Image logoImg = IconAssets.Logo;
+            if (logoImg != null) logo.Image = logoImg;
+            sideBar.Controls.Add(logo);
 
-            // ---- 标题（Shown 后居中，避免构造期宽度为 0 导致重叠/偏移） ----
-            title = new Label();
-            title.Text = "DeepSeek Harness";
-            title.Font = UiFont(19F, FontStyle.Bold);
+            Label brand = new Label();
+            brand.Text = "DeepSeek Harness";
+            brand.BackColor = SideGreen;
+            brand.ForeColor = Color.White;
+            brand.Font = UiFont(12.5F, FontStyle.Bold);
+            brand.AutoSize = true;
+            brand.Location = new Point((SIDE_W - brand.PreferredWidth) / 2, 196);
+            brand.TextAlign = ContentAlignment.MiddleCenter;
+            sideBar.Controls.Add(brand);
+
+            Label subBrand = new Label();
+            subBrand.Text = "一键部署客户端";
+            subBrand.BackColor = SideGreen;
+            subBrand.ForeColor = Color.FromArgb(170, 200, 172);
+            subBrand.Font = UiFont(9F, FontStyle.Regular);
+            subBrand.AutoSize = true;
+            subBrand.Location = new Point((SIDE_W - subBrand.PreferredWidth) / 2, 224);
+            sideBar.Controls.Add(subBrand);
+
+            Label ver = new Label();
+            ver.Text = "v0.1.1";
+            ver.BackColor = SideGreen;
+            ver.ForeColor = Color.FromArgb(120, 150, 122);
+            ver.Font = UiFont(8.5F, FontStyle.Regular);
+            ver.AutoSize = true;
+            ver.Location = new Point((SIDE_W - ver.PreferredWidth) / 2, 420);
+            sideBar.Controls.Add(ver);
+
+            // ---- 右侧内容区 ----
+            Label title = new Label();
+            title.Text = "欢迎使用 DeepSeek Harness 安装向导";
+            title.Font = UiFont(14F, FontStyle.Bold);
             title.ForeColor = TitleDark;
             title.AutoSize = true;
-            title.Location = new Point(0, 168);
+            title.Location = new Point(CONTENT_X, 60);
             Controls.Add(title);
 
-            sub = new Label();
-            sub.Text = "蓝色大肥鱼版 · 一键安装";
-            sub.Font = UiFont(9.5F, FontStyle.Regular);
+            Label sub = new Label();
+            sub.Text = "安装向导将在您的电脑上安装 DeepSeek Harness 客户端。\n请检查以下设置，然后点击「安装」继续。";
+            sub.Font = UiFont(9F, FontStyle.Regular);
             sub.ForeColor = TextGray;
             sub.AutoSize = true;
-            sub.Location = new Point(0, 202);
+            sub.Location = new Point(CONTENT_X, 92);
             Controls.Add(sub);
 
-            // ---- 卡片：安装位置 ----
+            // 卡片1：安装位置
             RoundedCard card1 = new RoundedCard();
             card1.Text = "安装位置";
-            card1.Font = UiFont(8.5F, FontStyle.Regular);
-            card1.Location = new Point(32, 240);
-            card1.Size = new Size(536, 72);
+            card1.Font = UiFont(8F, FontStyle.Regular);
+            card1.Location = new Point(CONTENT_X - 5, 138);
+            card1.Size = new Size(455, 60);
             Controls.Add(card1);
 
             txtDir = new TextBox();
             txtDir.Text = InstallerLogic.DefaultDir();
-            txtDir.Location = new Point(18, 36);
-            txtDir.Size = new Size(396, 26);
+            txtDir.Location = new Point(14, 30);
+            txtDir.Size = new Size(336, 24);
             txtDir.BorderStyle = BorderStyle.FixedSingle;
             card1.Controls.Add(txtDir);
 
             btnBrowse = new RoundedButton();
-            btnBrowse.Text = "浏览";
-            btnBrowse.Size = new Size(88, 28);
-            btnBrowse.Location = new Point(428, 35);
-            btnBrowse.BackColor = Color.FromArgb(232, 242, 255);
-            btnBrowse.ForeColor = MainBlue;
-            btnBrowse.HoverColor = Color.FromArgb(214, 232, 255);
-            btnBrowse.Font = UiFont(9F, FontStyle.Regular);
+            btnBrowse.Text = "浏览...";
+            btnBrowse.Size = new Size(74, 26);
+            btnBrowse.Location = new Point(364, 29);
+            btnBrowse.BackColor = Color.FromArgb(238, 240, 243);
+            btnBrowse.ForeColor = Color.FromArgb(70, 80, 90);
+            btnBrowse.HoverColor = Color.FromArgb(226, 230, 234);
+            btnBrowse.Font = UiFont(8.5F, FontStyle.Regular);
             btnBrowse.Click += delegate {
                 using (FolderBrowserDialog d = new FolderBrowserDialog()) {
                     d.Description = "选择安装位置";
@@ -445,144 +465,137 @@ namespace DSHInstaller {
             };
             card1.Controls.Add(btnBrowse);
 
-            // ---- 卡片：运行环境检测 ----
+            // 卡片2：运行环境
             RoundedCard card2 = new RoundedCard();
             card2.Text = "运行环境检测";
-            card2.Font = UiFont(8.5F, FontStyle.Regular);
-            card2.Location = new Point(32, 332);
-            card2.Size = new Size(536, 102);
+            card2.Font = UiFont(8F, FontStyle.Regular);
+            card2.Location = new Point(CONTENT_X - 5, 210);
+            card2.Size = new Size(455, 90);
             Controls.Add(card2);
 
             lblNodeStatus = new Label();
-            lblNodeStatus.Location = new Point(52, 36);
+            lblNodeStatus.Location = new Point(14, 32);
             lblNodeStatus.AutoSize = true;
             lblNodeStatus.Font = UiFont(10F, FontStyle.Bold);
             lblNodeStatus.Text = "检测中...";
             lblNodeStatus.ForeColor = TextGray;
             card2.Controls.Add(lblNodeStatus);
 
-            PictureBox nodeIcon = new PictureBox();
-            nodeIcon.Image = IconAssets.Node;
-            nodeIcon.SizeMode = PictureBoxSizeMode.Zoom;
-            nodeIcon.Size = new Size(22, 22);
-            nodeIcon.Location = new Point(20, 38);
-            card2.Controls.Add(nodeIcon);
-
             chkNode = new IconCheckBox();
             chkNode.Text = "安装 Node.js（未检测到，将自动下载约 35MB）";
-            chkNode.Location = new Point(16, 66);
-            chkNode.Size = new Size(480, 30);
-            chkNode.Font = UiFont(9F, FontStyle.Regular);
+            chkNode.Location = new Point(12, 60);
+            chkNode.Size = new Size(430, 26);
+            chkNode.Font = UiFont(8.5F, FontStyle.Regular);
             chkNode.Icon = IconAssets.Node;
             chkNode.Checked = true;
             card2.Controls.Add(chkNode);
 
-            // ---- 卡片：安装选项 ----
+            // 卡片3：安装选项
             RoundedCard card3 = new RoundedCard();
             card3.Text = "安装选项";
-            card3.Font = UiFont(8.5F, FontStyle.Regular);
-            card3.Location = new Point(32, 454);
-            card3.Size = new Size(536, 96);
+            card3.Font = UiFont(8F, FontStyle.Regular);
+            card3.Location = new Point(CONTENT_X - 5, 312);
+            card3.Size = new Size(455, 84);
             Controls.Add(card3);
 
             chkShortcut = new IconCheckBox();
             chkShortcut.Text = "添加桌面快捷方式";
-            chkShortcut.Location = new Point(16, 34);
-            chkShortcut.Size = new Size(300, 30);
-            chkShortcut.Font = UiFont(9F, FontStyle.Regular);
+            chkShortcut.Location = new Point(12, 29);
+            chkShortcut.Size = new Size(300, 26);
+            chkShortcut.Font = UiFont(8.5F, FontStyle.Regular);
             chkShortcut.Icon = IconAssets.Desktop;
             chkShortcut.Checked = true;
             card3.Controls.Add(chkShortcut);
 
             chkLaunch = new IconCheckBox();
             chkLaunch.Text = "安装完成后直接打开";
-            chkLaunch.Location = new Point(16, 64);
-            chkLaunch.Size = new Size(300, 30);
-            chkLaunch.Font = UiFont(9F, FontStyle.Regular);
+            chkLaunch.Location = new Point(12, 56);
+            chkLaunch.Size = new Size(300, 26);
+            chkLaunch.Font = UiFont(8.5F, FontStyle.Regular);
             chkLaunch.Icon = IconAssets.Rocket;
             chkLaunch.Checked = true;
             card3.Controls.Add(chkLaunch);
 
-            // ---- 步骤徽章 ----
+            // 步骤徽章
             string[] steps = { "解压文件", "运行环境", "安装依赖", "完成" };
             badges = new StepBadge[4];
             for (int i = 0; i < 4; i++) {
                 StepBadge sb = new StepBadge();
                 sb.StepText = steps[i];
                 sb.BadgeNumber = i + 1;
-                sb.Size = new Size(128, 30);
-                sb.Location = new Point(32 + i * 134, 566);
-                sb.Font = UiFont(9F, FontStyle.Regular);
+                sb.Size = new Size(112, 28);
+                sb.Location = new Point(CONTENT_X - 5 + i * 113, 412);
+                sb.Font = UiFont(8.5F, FontStyle.Regular);
                 badges[i] = sb;
                 Controls.Add(sb);
             }
 
-            // ---- 进度条 ----
+            // 进度条
             prog = new RoundedProgressBar();
-            prog.Location = new Point(36, 606);
-            prog.Size = new Size(528, 18);
+            prog.Location = new Point(CONTENT_X - 5, 450);
+            prog.Size = new Size(455, 16);
             prog.Maximum = 100;
             prog.Font = UiFont(8F, FontStyle.Regular);
             Controls.Add(prog);
 
-            // ---- 状态 ----
+            // 状态
             lblStatus = new Label();
-            lblStatus.Location = new Point(36, 630);
-            lblStatus.Size = new Size(528, 22);
+            lblStatus.Location = new Point(CONTENT_X - 5, 472);
+            lblStatus.Size = new Size(455, 20);
             lblStatus.ForeColor = TextGray;
-            lblStatus.Font = UiFont(8.5F, FontStyle.Regular);
-            lblStatus.TextAlign = ContentAlignment.MiddleLeft;
+            lblStatus.Font = UiFont(8F, FontStyle.Regular);
             Controls.Add(lblStatus);
 
-            // ---- 按钮 ----
+            // ---- 底部按钮栏（纯色浅灰 + 顶部细线） ----
+            Panel bottomBar = new Panel();
+            bottomBar.BackColor = Color.FromArgb(239, 241, 244);
+            bottomBar.Location = new Point(0, WIN_H - BOT_H);
+            bottomBar.Size = new Size(WIN_W, BOT_H);
+            bottomBar.Paint += delegate(object s, PaintEventArgs e) {
+                using (Pen p = new Pen(Color.FromArgb(205, 210, 216))) e.Graphics.DrawLine(p, 0, 0, WIN_W, 0);
+            };
+            Controls.Add(bottomBar);
+
             btnInstall = new RoundedButton();
-            btnInstall.Text = "开 始 安 装";
-            btnInstall.Size = new Size(176, 46);
-            btnInstall.Location = new Point(178, 658);
-            btnInstall.BackColor = MainBlue;
+            btnInstall.Text = "安  装";
+            btnInstall.Size = new Size(88, 32);
+            btnInstall.Location = new Point(WIN_W - 108, 14);
+            btnInstall.BackColor = BtnGreen;
             btnInstall.ForeColor = Color.White;
-            btnInstall.HoverColor = MainBlueHover;
-            btnInstall.Font = UiFont(11F, FontStyle.Bold);
+            btnInstall.HoverColor = BtnGreenHover;
+            btnInstall.Font = UiFont(10F, FontStyle.Bold);
             btnInstall.Click += StartInstall;
-            Controls.Add(btnInstall);
+            bottomBar.Controls.Add(btnInstall);
 
             btnExit = new RoundedButton();
-            btnExit.Text = "取 消";
-            btnExit.Size = new Size(100, 46);
-            btnExit.Location = new Point(368, 658);
-            btnExit.BackColor = Color.FromArgb(236, 242, 250);
-            btnExit.ForeColor = Color.FromArgb(90, 105, 130);
-            btnExit.HoverColor = Color.FromArgb(224, 232, 244);
-            btnExit.Font = UiFont(10F, FontStyle.Regular);
+            btnExit.Text = "取  消";
+            btnExit.Size = new Size(76, 32);
+            btnExit.Location = new Point(WIN_W - 200, 14);
+            btnExit.BackColor = Color.FromArgb(240, 242, 245);
+            btnExit.ForeColor = Color.FromArgb(80, 88, 96);
+            btnExit.HoverColor = Color.FromArgb(228, 232, 236);
+            btnExit.Font = UiFont(9F, FontStyle.Regular);
             btnExit.Click += delegate { Close(); };
-            Controls.Add(btnExit);
+            bottomBar.Controls.Add(btnExit);
 
             Shown += delegate {
                 BeginInvoke((Action)(delegate {
-                    // 标题/副标题居中（此时 PreferredWidth 已正确）
-                    title.Location = new Point((ClientSize.Width - title.PreferredWidth) / 2, 168);
-                    sub.Location = new Point((ClientSize.Width - sub.PreferredWidth) / 2, 202);
                     DetectNode();
                 }));
             };
         }
 
         void OnDragMouseDown(object sender, MouseEventArgs e) {
-            if (e.Button == MouseButtons.Left && e.Y < 36) {
+            if (e.Button == MouseButtons.Left && e.Y < TOP_H) {
                 ReleaseCapture();
                 SendMessage(Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
             }
         }
 
-        // 渐变背景
         protected override void OnPaintBackground(PaintEventArgs e) {
-            using (LinearGradientBrush b = new LinearGradientBrush(ClientRectangle,
-                Color.FromArgb(232, 243, 255), Color.FromArgb(252, 254, 255), 90f)) {
-                e.Graphics.FillRectangle(b, ClientRectangle);
-            }
+            e.Graphics.Clear(Color.White);
         }
 
-        // 更新步骤徽章：current = 当前步骤（0-3）
         void SetStep(int current) {
             for (int i = 0; i < badges.Length; i++) {
                 badges[i].State = i < current ? 2 : (i == current ? 1 : 0);
@@ -599,7 +612,7 @@ namespace DSHInstaller {
                     if (v.Length > 0) {
                         hasNode = true;
                         lblNodeStatus.Text = "✔ 已检测到 Node.js " + v;
-                        lblNodeStatus.ForeColor = Color.FromArgb(39, 174, 96);
+                        lblNodeStatus.ForeColor = Color.FromArgb(46, 125, 50);
                         chkNode.Visible = false;
                         return;
                     }
@@ -608,7 +621,7 @@ namespace DSHInstaller {
             catch { }
             hasNode = false;
             lblNodeStatus.Text = "✘ 未检测到 Node.js";
-            lblNodeStatus.ForeColor = Color.FromArgb(231, 76, 60);
+            lblNodeStatus.ForeColor = Color.FromArgb(198, 60, 50);
             chkNode.Visible = true;
             chkNode.Checked = true;
         }
