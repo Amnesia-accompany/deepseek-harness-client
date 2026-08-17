@@ -44,11 +44,11 @@ $bw.Write([UInt32]$png.Length); $bw.Write([UInt32]22)
 $bw.Write($png)
 $bw.Close(); $fs.Close()
 $g.Dispose(); $bmp.Dispose()
-# png (32x32 标题栏)
-$bmp2 = New-Object System.Drawing.Bitmap 32, 32
+# png (64x64 标题栏)
+$bmp2 = New-Object System.Drawing.Bitmap 64, 64
 $g2 = [System.Drawing.Graphics]::FromImage($bmp2)
 $g2.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$g2.DrawImage($img, 0, 0, 32, 32)
+$g2.DrawImage($img, 0, 0, 64, 64)
 $pngOut = Join-Path $buildDir 'icon.png'
 $bmp2.Save($pngOut, [System.Drawing.Imaging.ImageFormat]::Png)
 $g2.Dispose(); $bmp2.Dispose()
@@ -69,8 +69,28 @@ $g3.ResetClip()
 $pen3 = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 6)
 $g3.DrawPath($pen3, $path3)
 $logoBmp.Save($logoOut, [System.Drawing.Imaging.ImageFormat]::Png)
-$pen3.Dispose(); $path3.Dispose(); $g3.Dispose(); $logoBmp.Dispose(); $img.Dispose()
+$pen3.Dispose(); $path3.Dispose(); $g3.Dispose(); $logoBmp.Dispose()
 Write-Host "    品牌 Logo：$logoOut"
+
+# 高清启动 Logo（客户端启动动画用，512px 圆形 + 白色细描边）
+$bootOut = Join-Path $buildDir 'boot-logo.png'
+$bootBmp = New-Object System.Drawing.Bitmap 512, 512
+$g4 = [System.Drawing.Graphics]::FromImage($bootBmp)
+$g4.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+$g4.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+$path4 = New-Object System.Drawing.Drawing2D.GraphicsPath
+$path4.AddEllipse(14, 14, 484, 484)
+$path4.CloseFigure()
+$g4.SetClip($path4)
+$g4.DrawImage($img, 14, 14, 484, 484)
+$g4.ResetClip()
+$pen4 = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 10)
+$g4.DrawPath($pen4, $path4)
+$bootBmp.Save($bootOut, [System.Drawing.Imaging.ImageFormat]::Png)
+$pen4.Dispose(); $path4.Dispose(); $g4.Dispose(); $bootBmp.Dispose()
+Write-Host "    高清启动 Logo：$bootOut"
+
+$img.Dispose()
 
 # ---- 微型功能图标（安装界面用，32x32 PNG） ----
 function New-IconPng {
@@ -151,8 +171,9 @@ New-Item -ItemType Directory -Force -Path $rootApp | Out-Null
 Get-ChildItem $eleApp -Force | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName (Join-Path $rootApp $_.Name) -Recurse -Force
 }
-# 标题栏图标
+# 标题栏图标 + 高清启动 Logo
 Copy-Item -LiteralPath $pngOut (Join-Path $rootApp 'ui\icon.png') -Force
+Copy-Item -LiteralPath (Join-Path $buildDir 'boot-logo.png') (Join-Path $rootApp 'ui\boot-logo.png') -Force
 # 主 exe（素材库中已 rcedit 图标；确保存在）
 $mainExe = Join-Path $root '蓝色大肥鱼DSH.exe'
 if (-not (Test-Path $mainExe)) {
