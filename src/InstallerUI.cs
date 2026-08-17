@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  DeepSeek Harness 客户端 - 安装界面（可爱现代风 v2）
 //  InstallerUI.cs
 //  包含：圆角按钮(带投影)/圆角卡片(带投影)/圆角进度条(百分比)
@@ -334,6 +334,29 @@ namespace DSHInstaller {
             catch { return new Font(FontFamily.GenericSansSerif, size, style); }
         }
 
+        // 深蓝色圆形 Logo（渐变深蓝紫圆 + 白色 DSH 文字）
+        static Bitmap MakeDarkLogo() {
+            Bitmap b = new Bitmap(108, 108);
+            Graphics g = Graphics.FromImage(b);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (LinearGradientBrush lb = new LinearGradientBrush(
+                new Rectangle(0, 0, 108, 108),
+                Color.FromArgb(84, 104, 168), Color.FromArgb(44, 58, 106), 45f)) {
+                g.FillEllipse(lb, 0, 0, 108, 108);
+            }
+            // 顶部高光
+            using (SolidBrush hl = new SolidBrush(Color.FromArgb(36, 255, 255, 255))) {
+                g.FillEllipse(hl, 10, 8, 88, 30);
+            }
+            string s = "DSH";
+            using (Font f = new Font("Segoe UI", 30F, FontStyle.Bold)) {
+                SizeF sz = g.MeasureString(s, f);
+                g.DrawString(s, f, Brushes.White, (108 - sz.Width) / 2, (108 - sz.Height) / 2);
+            }
+            g.Dispose();
+            return b;
+        }
+
         public InstallForm() {
             Text = "DeepSeek Harness 安装";
             Font = UiFont(9F, FontStyle.Regular);
@@ -365,13 +388,12 @@ namespace DSHInstaller {
             barTitle.Location = new Point(14, 9);
             Controls.Add(barTitle);
 
-            // ---- 大肥鱼圆形头像 ----
+            // ---- 深蓝色圆形 Logo（自绘：渐变深蓝圆 + 白色 DSH） ----
             PictureBox logo = new PictureBox();
             logo.SizeMode = PictureBoxSizeMode.Zoom;
-            logo.Size = new Size(104, 104);
-            logo.Location = new Point((ClientSize.Width - 104) / 2, 50);
-            Image logoImg = IconAssets.Logo;
-            if (logoImg != null) logo.Image = logoImg;
+            logo.Size = new Size(108, 108);
+            logo.Location = new Point((ClientSize.Width - 108) / 2, 46);
+            logo.Image = MakeDarkLogo();
             Controls.Add(logo);
 
             // ---- 标题（Shown 后居中，避免构造期宽度为 0 导致重叠/偏移） ----
