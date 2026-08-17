@@ -307,13 +307,13 @@ namespace DSHInstaller {
         static readonly Color TitleDark = Color.FromArgb(51, 51, 51);
         static readonly Color TextGray = Color.FromArgb(110, 118, 126);
 
-        const int WIN_W = 720;
-        const int WIN_H = 620;
+        const int WIN_W = 800;
+        const int WIN_H = 680;
         const int SIDE_W = 170;
         const int TOP_H = 48;
         const int BOT_H = 64;
         const int CONTENT_X = 205;
-        const int CARD_W = 490;
+        const int CARD_W = 570;
 
         static Font UiFont(float size, FontStyle style) {
             try { return new Font("Microsoft YaHei UI", size, style); }
@@ -372,15 +372,23 @@ namespace DSHInstaller {
             if (logoImg != null) logo.Image = logoImg;
             sideBar.Controls.Add(logo);
 
-            Label brand = new Label();
-            brand.Text = "DeepSeek Harness";
-            brand.BackColor = SideBlue;
-            brand.ForeColor = Color.White;
-            brand.Font = UiFont(12.5F, FontStyle.Bold);
-            brand.AutoSize = true;
-            brand.Location = new Point((SIDE_W - brand.PreferredWidth) / 2, 236);
-            brand.TextAlign = ContentAlignment.MiddleCenter;
-            sideBar.Controls.Add(brand);
+            Label brand1 = new Label();
+            brand1.Text = "DeepSeek";
+            brand1.BackColor = SideBlue;
+            brand1.ForeColor = Color.White;
+            brand1.Font = UiFont(13F, FontStyle.Bold);
+            brand1.AutoSize = true;
+            brand1.Location = new Point((SIDE_W - brand1.PreferredWidth) / 2, 238);
+            sideBar.Controls.Add(brand1);
+
+            Label brand2 = new Label();
+            brand2.Text = "Harness";
+            brand2.BackColor = SideBlue;
+            brand2.ForeColor = Color.White;
+            brand2.Font = UiFont(13F, FontStyle.Bold);
+            brand2.AutoSize = true;
+            brand2.Location = new Point((SIDE_W - brand2.PreferredWidth) / 2, 264);
+            sideBar.Controls.Add(brand2);
 
             Label subBrand = new Label();
             subBrand.Text = "一键部署客户端";
@@ -388,7 +396,7 @@ namespace DSHInstaller {
             subBrand.ForeColor = Color.FromArgb(180, 205, 235);
             subBrand.Font = UiFont(9F, FontStyle.Regular);
             subBrand.AutoSize = true;
-            subBrand.Location = new Point((SIDE_W - subBrand.PreferredWidth) / 2, 266);
+            subBrand.Location = new Point((SIDE_W - subBrand.PreferredWidth) / 2, 296);
             sideBar.Controls.Add(subBrand);
 
             Label ver = new Label();
@@ -397,45 +405,49 @@ namespace DSHInstaller {
             ver.ForeColor = Color.FromArgb(130, 160, 195);
             ver.Font = UiFont(8.5F, FontStyle.Regular);
             ver.AutoSize = true;
-            ver.Location = new Point((SIDE_W - ver.PreferredWidth) / 2, 466);
+            ver.Location = new Point((SIDE_W - ver.PreferredWidth) / 2, 528);
             sideBar.Controls.Add(ver);
 
             // ---- 右侧内容区 ----
             Label title = new Label();
             title.Text = "欢迎使用 DeepSeek Harness 安装向导";
-            title.Font = UiFont(14F, FontStyle.Bold);
+            title.Font = UiFont(15F, FontStyle.Bold);
             title.ForeColor = TitleDark;
-            title.AutoSize = true;
-            title.Location = new Point(CONTENT_X, 62);
+            title.AutoSize = false;
+            title.Size = new Size(CARD_W, 34);
+            title.Location = new Point(CONTENT_X - 5, 66);
+            title.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(title);
 
             Label sub = new Label();
             sub.Text = "安装向导将在您的电脑上安装 DeepSeek Harness 客户端。\n请先检查以下设置，然后点击「安装」继续。";
             sub.Font = UiFont(9F, FontStyle.Regular);
             sub.ForeColor = TextGray;
-            sub.AutoSize = true;
-            sub.Location = new Point(CONTENT_X, 98);
+            sub.AutoSize = false;
+            sub.Size = new Size(CARD_W, 40);
+            sub.Location = new Point(CONTENT_X - 5, 104);
+            sub.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(sub);
 
             // 卡片1：安装位置
             RoundedCard card1 = new RoundedCard();
             card1.Text = "安装位置";
             card1.Font = UiFont(8F, FontStyle.Regular);
-            card1.Location = new Point(CONTENT_X - 5, 148);
-            card1.Size = new Size(CARD_W, 64);
+            card1.Location = new Point(CONTENT_X - 5, 164);
+            card1.Size = new Size(CARD_W, 66);
             Controls.Add(card1);
 
             txtDir = new TextBox();
             txtDir.Text = InstallerLogic.DefaultDir();
-            txtDir.Location = new Point(14, 32);
-            txtDir.Size = new Size(342, 26);
+            txtDir.Location = new Point(14, 34);
+            txtDir.Size = new Size(420, 26);
             txtDir.BorderStyle = BorderStyle.FixedSingle;
             card1.Controls.Add(txtDir);
 
             btnBrowse = new RoundedButton();
             btnBrowse.Text = "浏览...";
-            btnBrowse.Size = new Size(82, 28);
-            btnBrowse.Location = new Point(368, 31);
+            btnBrowse.Size = new Size(88, 28);
+            btnBrowse.Location = new Point(446, 33);
             btnBrowse.BackColor = Color.FromArgb(238, 240, 243);
             btnBrowse.ForeColor = Color.FromArgb(70, 80, 90);
             btnBrowse.HoverColor = Color.FromArgb(226, 230, 234);
@@ -453,12 +465,12 @@ namespace DSHInstaller {
             RoundedCard card2 = new RoundedCard();
             card2.Text = "运行环境检测";
             card2.Font = UiFont(8F, FontStyle.Regular);
-            card2.Location = new Point(CONTENT_X - 5, 230);
-            card2.Size = new Size(CARD_W, 98);
+            card2.Location = new Point(CONTENT_X - 5, 252);
+            card2.Size = new Size(CARD_W, 100);
             Controls.Add(card2);
 
             lblNodeStatus = new Label();
-            lblNodeStatus.Location = new Point(14, 32);
+            lblNodeStatus.Location = new Point(14, 34);
             lblNodeStatus.AutoSize = true;
             lblNodeStatus.Font = UiFont(10F, FontStyle.Bold);
             lblNodeStatus.Text = "检测中...";
@@ -467,8 +479,8 @@ namespace DSHInstaller {
 
             chkNode = new IconCheckBox();
             chkNode.Text = "安装 Node.js（未检测到，将自动下载约 35MB）";
-            chkNode.Location = new Point(12, 64);
-            chkNode.Size = new Size(460, 28);
+            chkNode.Location = new Point(12, 66);
+            chkNode.Size = new Size(540, 28);
             chkNode.Font = UiFont(8.5F, FontStyle.Regular);
             chkNode.Icon = IconAssets.Node;
             chkNode.Checked = true;
@@ -478,13 +490,13 @@ namespace DSHInstaller {
             RoundedCard card3 = new RoundedCard();
             card3.Text = "安装选项";
             card3.Font = UiFont(8F, FontStyle.Regular);
-            card3.Location = new Point(CONTENT_X - 5, 346);
-            card3.Size = new Size(CARD_W, 92);
+            card3.Location = new Point(CONTENT_X - 5, 374);
+            card3.Size = new Size(CARD_W, 94);
             Controls.Add(card3);
 
             chkShortcut = new IconCheckBox();
             chkShortcut.Text = "添加桌面快捷方式";
-            chkShortcut.Location = new Point(12, 26);
+            chkShortcut.Location = new Point(12, 28);
             chkShortcut.Size = new Size(320, 28);
             chkShortcut.Font = UiFont(8.5F, FontStyle.Regular);
             chkShortcut.Icon = IconAssets.Desktop;
@@ -493,7 +505,7 @@ namespace DSHInstaller {
 
             chkLaunch = new IconCheckBox();
             chkLaunch.Text = "安装完成后直接打开";
-            chkLaunch.Location = new Point(12, 58);
+            chkLaunch.Location = new Point(12, 62);
             chkLaunch.Size = new Size(320, 28);
             chkLaunch.Font = UiFont(8.5F, FontStyle.Regular);
             chkLaunch.Icon = IconAssets.Rocket;
@@ -507,8 +519,8 @@ namespace DSHInstaller {
                 StepBadge sb = new StepBadge();
                 sb.StepText = steps[i];
                 sb.BadgeNumber = i + 1;
-                sb.Size = new Size(122, 28);
-                sb.Location = new Point(CONTENT_X - 5 + i * 123, 458);
+                sb.Size = new Size(140, 28);
+                sb.Location = new Point(CONTENT_X - 5 + i * 143, 496);
                 sb.Font = UiFont(8.5F, FontStyle.Regular);
                 badges[i] = sb;
                 Controls.Add(sb);
@@ -516,7 +528,7 @@ namespace DSHInstaller {
 
             // 进度条
             prog = new RoundedProgressBar();
-            prog.Location = new Point(CONTENT_X - 5, 496);
+            prog.Location = new Point(CONTENT_X - 5, 540);
             prog.Size = new Size(CARD_W, 16);
             prog.Maximum = 100;
             prog.Font = UiFont(8F, FontStyle.Regular);
@@ -524,7 +536,7 @@ namespace DSHInstaller {
 
             // 状态
             lblStatus = new Label();
-            lblStatus.Location = new Point(CONTENT_X - 5, 518);
+            lblStatus.Location = new Point(CONTENT_X - 5, 564);
             lblStatus.Size = new Size(CARD_W, 20);
             lblStatus.ForeColor = TextGray;
             lblStatus.Font = UiFont(8F, FontStyle.Regular);
