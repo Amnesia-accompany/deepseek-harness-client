@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>DeepSeek Harness</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #1c2136;
+      font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; }
+    #titlebar { position: fixed; top: 0; left: 0; right: 0; height: 40px;
+      background: #ffffff; display: flex; align-items: center;
+      -webkit-app-region: drag; user-select: none; z-index: 9999; }
+    #titlebar img { width: 18px; height: 18px; margin: 0 10px 0 14px; }
+    #titlebar .t { color: #1a1a1a; font-size: 12.5px; flex: 1;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #titlebar .spacer { width: 140px; height: 40px; -webkit-app-region: no-drag; }
+    #stage { position: fixed; top: 40px; left: 0; right: 0; bottom: 0; background: #1c2136; }
+    #stage iframe { width: 100%; height: 100%; border: 0; display: block; }
+    #boot, #error, #keyform { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; background: #1c2136; }
+    #boot .logo { width: 64px; height: 64px; margin-bottom: 16px; }
+    #boot .msg { color: #b8c0d0; font-size: 13px; margin-top: 12px; }
+    #error .t { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+    #error pre { color: #d0d0d0; font-size: 12px; max-width: 720px; max-height: 260px;
+      overflow: auto; white-space: pre-wrap; margin: 8px 0 18px;
+      background: rgba(255,255,255,0.06); padding: 12px; border-radius: 8px; }
+    #error .btn, #keyform .btn { background: #0078d4; color: #fff; border: 0;
+      padding: 9px 26px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    #error .btn:hover, #keyform .btn:hover { background: #1a86da; }
+    #keyform .t { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+    #keyform .d { color: #9aa4b4; font-size: 12px; margin-bottom: 14px; }
+    #keyform input { width: 420px; padding: 9px 12px; border-radius: 6px; border: 1px solid #3a4658;
+      background: #141a2a; color: #fff; font-size: 13px; outline: none; margin-bottom: 8px; }
+    #keyform input:focus { border-color: #0078d4; }
+    #keyform .err { color: #ff6b6b; font-size: 12px; min-height: 18px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div id="titlebar">
+    <img src="icon.png" alt="" />
+    <div class="t" id="titleText">DeepSeek Harness</div>
+    <div class="spacer"></div>
+  </div>
+
+  <div id="stage"><iframe id="host"></iframe></div>
+
+  <div id="boot">
+    <img class="logo" src="icon.png" alt="" />
+    <div class="t">DeepSeek Harness</div>
+    <div class="msg" id="bootMsg">正在启动服务...</div>
+  </div>
+
+  <div id="error">
+    <div class="t" id="errTitle">启动失败</div>
+    <pre id="errDetail"></pre>
+    <button class="btn" id="errRetry">重试</button>
+  </div>
+
+  <div id="keyform">
+    <div class="t">首次使用</div>
+    <div class="d">请输入你的 DeepSeek API Key（platform.deepseek.com 申请，形如 sk-xxxx）</div>
+    <input id="keyInput" type="text" placeholder="sk-..." autocomplete="off" />
+    <div class="err" id="keyErr"></div>
+    <button class="btn" id="keyOk">确定并启动</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

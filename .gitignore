@@ -1,0 +1,34 @@
+# ---------- 依赖（npm install 生成） ----------
+app/node_modules/
+
+# ---------- Electron 运行库（构建时从素材库同步，可再生） ----------
+蓝色大肥鱼DSH.exe
+launcher.exe
+uninstaller.exe
+chrome_*.pak
+*.dll
+*.dat
+*.bin
+resources.pak
+version
+vk_swiftshader*
+vulkan-1.dll
+LICENSE
+LICENSES.chromium.html
+locales/
+resources/default_app.asar
+
+# ---------- 构建产物 ----------
+build/payload.zip
+build/app.ico
+build/icon.png
+build/electron-dist/
+build/rcedit-x64.exe
+
+# ---------- 运行数据 ----------
+data/config.json
+data/server.log
+data/icon.ico
+.dsh-*/
+*.log
+desktop-shot.png

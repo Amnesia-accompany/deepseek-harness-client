@@ -1,0 +1,48 @@
+﻿═══════════════════════════════════════════════════════════
+  懒人客户端 · 目录结构说明
+  （本文件夹 = DeepSeek Harness 懒人客户端的完整工程与发行根）
+═══════════════════════════════════════════════════════════
+
+【根目录 - 发行文件（安装后也会长这样）】
+  蓝色大肥鱼DSH.exe        桌面客户端主程序（Electron，双击即用）
+  launcher.exe             浏览器模式启动器（备用）
+  resources\               桌面端应用代码（main.js / preload / ui）
+  locales\                 Electron 界面语言包（只保留中英文）
+  chrome_*.pak / *.dll 等   Electron 运行库（Chromium 内核，勿删）
+  app\                     DeepSeek Harness 核心依赖（node_modules）
+                           ※ 已装好可直接运行；也可删除，
+                             首次启动会自动重新下载
+  data\                    运行数据与素材
+    icon-source.jpg          程序图标源图（换图标就替换这个文件）
+    config.json / server.log 运行配置与服务日志（自动生成）
+  scripts\                 核心脚本
+    dsh-client.ps1            安装/启动/配置/更新 逻辑
+    run-server.ps1            服务窗口脚本（浏览器模式用）
+    uninstall.ps1             卸载脚本
+  使用说明.txt / README.md  用户文档
+  安装-启动.bat / 启动.bat / 更新.bat / 重新配置APIKey.bat
+                            （免安装便携用法 / 日常维护入口）
+  下载GitHub源码.bat        拉取官方源码（进阶）
+
+【src\ - 源码（构建用，不随安装分发）】
+  Installer.cs             安装器源码（C#）
+  Launcher.cs              浏览器模式启动器源码（C#）
+  app.manifest             高 DPI 声明（PerMonitorV2）
+  build.ps1                一键构建脚本（见下）
+
+【build\ - 构建产物与素材（可整体删除，构建时自动重建）】
+  electron-dist\           Electron 素材库（发行包解压 + 换图标）
+  rcedit-x64.exe            exe 图标/版本信息工具
+  payload.zip               安装器内嵌载荷（构建生成）
+  app.ico / icon.png        构建中间产物（图标）
+
+【如何重新构建】
+  1. 确保 build\electron-dist\ 存在（素材库）
+  2. 运行：powershell -File src\build.ps1
+  3. 产物：D:\DeepSeek Harness\蓝色大肥鱼DSH-安装程序.exe
+
+【常用维护】
+  · 换图标：替换 data\icon-source.jpg → 重新构建
+  · 更新客户端：运行 更新.bat（更新 dsh 核心依赖）
+  · 完全重置：删除本文件夹 + C:\Users\你的用户名\.dsh
+═══════════════════════════════════════════════════════════

@@ -1,0 +1,8 @@
+{
+  "name": "dsh-lazy-client-app",
+  "private": true,
+  "description": "蓝色大肥鱼懒人客户端 - DeepSeek Harness 应用依赖",
+  "dependencies": {
+    "@deepseek-ai/dsh": "^0.1.0-rc.6"
+  }
+}
