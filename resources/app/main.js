@@ -121,6 +121,9 @@ function logLine(line) {
   } catch (e) { }
 }
 
+// 服务就绪信号：dsh web 启动成功后打印 "dsh web: http://..." 行
+let stdoutReady = null;
+
 async function startServer() {
   if (await portIsDsh(port)) return { ok: true, reused: true };
   if (await portBusy(port)) {
@@ -148,7 +151,14 @@ async function startServer() {
   });
   logLine('[main] spawned node pid=' + serverProc.pid + ' node=' + nodeExe);
   serverProc.on('error', (e) => logLine('[main] spawn error: ' + e));
-  serverProc.stdout.on('data', (d) => logLine(d.toString().trim()));
+  serverProc.stdout.on('data', (d) => {
+    const text = d.toString().trim();
+    logLine(text);
+    // 服务打印 URL 行 = 就绪信号，立即唤醒等待方（比轮询快 1~2 秒）
+    if (/http:\/\/127\.0\.0\.1:\d+/.test(text) && stdoutReady) {
+      const r = stdoutReady; stdoutReady = null; r();
+    }
+  });
   serverProc.stderr.on('data', (d) => logLine(d.toString().trim()));
   serverProc.on('exit', (code, sig) => logLine('[main] server exit code=' + code + ' sig=' + sig));
   serverProc.on('close', () => { serverProc = null; });
@@ -158,9 +168,17 @@ async function startServer() {
 
 async function waitReady(timeoutMs) {
   const deadline = Date.now() + timeoutMs;
+  // 快速通道：stdout 就绪信号
+  const signal = new Promise((resolve) => { stdoutReady = resolve; });
+  let fired = false;
+  signal.then(() => { fired = true; }).catch(() => { });
   while (Date.now() < deadline) {
+    const won = await Promise.race([
+      signal.then(() => 'signal'),
+      new Promise((r) => setTimeout(() => r('poll'), 400)),
+    ]);
+    if (won === 'signal') return true;
     if (await portIsDsh(port)) return true;
-    await new Promise(r => setTimeout(r, 700));
   }
   return false;
 }

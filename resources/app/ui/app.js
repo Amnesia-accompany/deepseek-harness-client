@@ -4,10 +4,10 @@ const $ = (id) => document.getElementById(id);
 
 let status = null;
 
+// 视图切换（.show 类驱动，配合 CSS 过渡动画）
 function show(el) {
-  ['boot', 'error', 'keyform', 'stage'].forEach(id => $(id).style.display = 'none');
-  $(el).style.display = 'flex';
-  if (el === 'stage') $(el).style.display = 'block';
+  ['boot', 'error', 'keyform', 'stage'].forEach(id => $(id).classList.remove('show'));
+  $(el).classList.add('show');
 }
 
 function bootMsg(m) { $('bootMsg').textContent = m; }
@@ -15,10 +15,10 @@ function bootMsg(m) { $('bootMsg').textContent = m; }
 async function loadPage() {
   const st = await window.dsh.status();
   if (st.ready && st.port) {
-    show('stage');
     $('host').src = 'http://127.0.0.1:' + st.port + '/';
+    show('stage');
   } else {
-    setTimeout(loadPage, 700);
+    setTimeout(loadPage, 600);
   }
 }
 
@@ -28,7 +28,7 @@ async function start() {
   if (!status.hasDsh) {
     show('error');
     $('errTitle').textContent = '未安装';
-    $('errDetail').textContent = '未找到 DeepSeek Harness 核心。\n请先运行「蓝色大肥鱼DSH-安装程序.exe」完成安装。';
+    $('errDetail').textContent = '未找到 DeepSeek Harness 核心。\n请先运行「deepseek-harness-client.exe」完成安装。';
     return;
   }
   if (!status.hasKey) {
@@ -37,7 +37,7 @@ async function start() {
     return;
   }
   show('boot');
-  bootMsg('正在启动服务（约 10~30 秒）...');
+  bootMsg('正在启动服务');
   const r = await window.dsh.start();
   if (!r.ok) {
     show('error');
@@ -45,7 +45,7 @@ async function start() {
     $('errDetail').textContent = r.error + '\n\n最近日志：\n' + (r.log || '（无）');
     return;
   }
-  bootMsg('服务已就绪，正在加载界面...');
+  bootMsg('正在加载界面');
   $('host').src = 'http://127.0.0.1:' + r.port + '/';
   $('host').onload = () => { window.dsh.log('iframe 已加载页面'); };
   show('stage');
@@ -66,7 +66,7 @@ $('keyInput').addEventListener('keydown', (e) => {
 
 $('errRetry').onclick = async () => {
   show('boot');
-  bootMsg('正在重新启动...');
+  bootMsg('正在重新启动');
   loadPage();
 };
 

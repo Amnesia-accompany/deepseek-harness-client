@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  蓝色大肥鱼 DeepSeek Harness 懒人客户端 - 安装器
 //  Installer.cs
 //  ------------------------------------------------------------
@@ -146,6 +146,31 @@ namespace DSHInstaller {
         }
 
         // ---------- 下载 Node.js（便携版，免管理员） ----------
+        // 网络策略：国内直连 npmmirror 最快；先直连（绕过系统代理），
+        // 失败再回退系统代理（兼容必须走代理的网络环境）
+        static string DownloadStringSmart(WebClient wc, string url) {
+            try {
+                wc.Proxy = null;
+                return wc.DownloadString(url);
+            }
+            catch {
+                try { wc.Proxy = WebRequest.DefaultWebProxy; return wc.DownloadString(url); }
+                catch { return null; }
+            }
+        }
+
+        static bool DownloadFileSmart(WebClient wc, string url, string dest) {
+            try {
+                wc.Proxy = null;
+                wc.DownloadFile(url, dest);
+                return true;
+            }
+            catch {
+                try { wc.Proxy = WebRequest.DefaultWebProxy; wc.DownloadFile(url, dest); return true; }
+                catch { return false; }
+            }
+        }
+
         static string DownloadNode(string targetDir, Action<string> progress) {
             string[] mirrors = { "https://npmmirror.com/mirrors/node", "https://nodejs.org/dist" };
             string mirror = null;
@@ -153,8 +178,8 @@ namespace DSHInstaller {
             using (WebClient wc = new WebClient()) {
                 wc.Encoding = Encoding.UTF8;
                 foreach (string m in mirrors) {
-                    try { json = wc.DownloadString(m + "/index.json"); mirror = m; break; }
-                    catch { }
+                    json = DownloadStringSmart(wc, m + "/index.json");
+                    if (json != null) { mirror = m; break; }
                 }
             }
             if (mirror == null || json == null) throw new Exception("无法获取 Node.js 版本信息，请检查网络后重试");
@@ -167,7 +192,14 @@ namespace DSHInstaller {
             string zipName = "node-" + ver + "-win-x64.zip";
             string zipPath = Path.Combine(Path.GetTempPath(), zipName);
             using (WebClient wc = new WebClient()) {
-                wc.DownloadFile(mirror + "/" + ver + "/" + zipName, zipPath);
+                wc.DownloadProgressChanged += delegate(object s, DownloadProgressChangedEventArgs e) {
+                    if (progress != null) {
+                        progress("正在下载 Node.js " + e.ProgressPercentage + "%");
+                    }
+                };
+                if (!DownloadFileSmart(wc, mirror + "/" + ver + "/" + zipName, zipPath)) {
+                    throw new Exception("Node.js 下载失败（" + mirror + "），请检查网络后重试");
+                }
             }
             string tmp = Path.Combine(targetDir, "tools", "node-tmp");
             if (Directory.Exists(tmp)) Directory.Delete(tmp, true);
@@ -288,8 +320,29 @@ namespace DSHInstaller {
         public static void Run(string targetDir, bool? installNode, bool createShortcut, Action<string> progress) {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             if (string.IsNullOrEmpty(targetDir)) targetDir = DefaultDir();
+
+            // 目录安全检查：禁止装到盘根（D: / D:\ / D:/ 等），避免卸载时误删整盘
+            string rawDir = targetDir.Trim().Trim('"');
+            if (Regex.IsMatch(rawDir, @"^[A-Za-z]:[\\/]?$") || rawDir.Equals("C:", StringComparison.OrdinalIgnoreCase)) {
+                throw new Exception("安装位置不能是磁盘根目录（如 D:\\），\n请选择专门的文件夹（默认 C:\\Users\\你的用户名\\DeepSeek Harness）");
+            }
             targetDir = Path.GetFullPath(targetDir).TrimEnd('\\');
             if (progress != null) progress("准备安装到 " + targetDir);
+            string dirRoot = Path.GetPathRoot(targetDir);
+            if (dirRoot != null && targetDir.Equals(dirRoot.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) {
+                throw new Exception("安装位置不能是磁盘根目录（如 " + dirRoot + "），\n请选择专门的文件夹（默认 C:\\Users\\你的用户名\\DeepSeek Harness）");
+            }
+            // 磁盘空间预检查：解压 + 依赖约需 1GB
+            string spaceErr = "";
+            try {
+                DriveInfo drive = new DriveInfo(dirRoot);
+                if (drive.IsReady && drive.AvailableFreeSpace < 1024L * 1024 * 1024) {
+                    spaceErr = "磁盘可用空间不足（需约 1GB，当前仅 "
+                        + (drive.AvailableFreeSpace / 1024 / 1024) + " MB），请清理磁盘后重试";
+                }
+            }
+            catch { /* 无法获取空间信息（网络盘等）则跳过检查 */ }
+            if (spaceErr.Length > 0) throw new Exception(spaceErr);
 
             // 先停掉正在运行的客户端服务，避免文件占用
             KillClientServers();
@@ -313,7 +366,7 @@ namespace DSHInstaller {
                 throw new Exception("未检测到 Node.js 且已取消自动安装，无法继续");
             }
             if (needNode) {
-                if (progress != null) progress("正在下载 Node.js（约 35MB，请稍候）...");
+                if (progress != null) progress("正在下载 Node.js（约 35MB）...");
                 nodeExe = DownloadNode(targetDir, progress);
                 if (progress != null) progress("Node.js " + NodeVersion(nodeExe) + " 安装完成");
             }
@@ -342,7 +395,12 @@ namespace DSHInstaller {
         CheckBox chkLaunch;
         ProgressBar prog;
         Label lblStatus;
+        Label[] stepLabels;
         bool hasNode;
+
+        static readonly Color AccentBlue = Color.FromArgb(0, 120, 215);
+        static readonly Color StepDone = Color.FromArgb(16, 150, 90);
+        static readonly Color StepGray = Color.FromArgb(150, 155, 165);
 
         static Font UiFont(float size, FontStyle style) {
             try { return new Font("Microsoft YaHei UI", size, style); }
@@ -350,45 +408,45 @@ namespace DSHInstaller {
         }
 
         public InstallForm() {
-            Text = "蓝色大肥鱼 - DeepSeek Harness 懒人客户端 安装";
+            Text = "DeepSeek Harness 客户端 安装";
             Font = UiFont(9F, FontStyle.Regular);
-            ClientSize = new Size(560, 470);
+            ClientSize = new Size(560, 520);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
 
             Label title = new Label();
-            title.Text = "蓝色大肥鱼 DeepSeek Harness 懒人客户端";
-            title.Font = UiFont(14F, FontStyle.Bold);
-            title.ForeColor = Color.FromArgb(0, 110, 215);
+            title.Text = "DeepSeek Harness 客户端";
+            title.Font = UiFont(15F, FontStyle.Bold);
+            title.ForeColor = AccentBlue;
             title.AutoSize = true;
-            title.Location = new Point(26, 20);
+            title.Location = new Point(26, 18);
 
             Label sub = new Label();
-            sub.Text = "基于 deepseek-ai/deepseek-harness 开源项目 · 界面与官方一致";
+            sub.Text = "基于 deepseek-ai/deepseek-harness 开源项目 · 一键安装";
             sub.AutoSize = true;
             sub.ForeColor = Color.Gray;
-            sub.Location = new Point(28, 52);
+            sub.Location = new Point(28, 50);
 
             Label l1 = new Label();
             l1.Text = "安装位置：";
             l1.AutoSize = true;
-            l1.Location = new Point(26, 90);
+            l1.Location = new Point(26, 88);
 
             txtDir = new TextBox();
             txtDir.Text = InstallerLogic.DefaultDir();
-            txtDir.Location = new Point(110, 87);
+            txtDir.Location = new Point(110, 85);
             txtDir.Width = 330;
 
             btnBrowse = new Button();
             btnBrowse.Text = "浏览...";
-            btnBrowse.Location = new Point(446, 86);
+            btnBrowse.Location = new Point(446, 84);
             btnBrowse.Size = new Size(88, 25);
 
             GroupBox grp = new GroupBox();
             grp.Text = "运行环境检测";
-            grp.Location = new Point(24, 126);
+            grp.Location = new Point(24, 122);
             grp.Size = new Size(510, 96);
 
             lblNodeStatus = new Label();
@@ -408,46 +466,63 @@ namespace DSHInstaller {
 
             GroupBox grpOpt = new GroupBox();
             grpOpt.Text = "安装选项";
-            grpOpt.Location = new Point(24, 232);
-            grpOpt.Size = new Size(510, 86);
+            grpOpt.Location = new Point(24, 228);
+            grpOpt.Size = new Size(510, 84);
 
             chkShortcut = new CheckBox();
             chkShortcut.Text = "添加桌面快捷方式";
-            chkShortcut.Location = new Point(16, 26);
+            chkShortcut.Location = new Point(16, 25);
             chkShortcut.AutoSize = true;
             chkShortcut.Checked = true;
 
             chkLaunch = new CheckBox();
             chkLaunch.Text = "安装完成后直接打开";
-            chkLaunch.Location = new Point(16, 56);
+            chkLaunch.Location = new Point(16, 53);
             chkLaunch.AutoSize = true;
             chkLaunch.Checked = true;
 
             grpOpt.Controls.Add(chkShortcut);
             grpOpt.Controls.Add(chkLaunch);
 
+            // 步骤指示条
+            string[] steps = { "解压文件", "运行环境", "安装依赖", "完成" };
+            stepLabels = new Label[4];
+            int stepW = 112;
+            for (int i = 0; i < 4; i++) {
+                Label sl = new Label();
+                sl.Text = (i + 1) + ". " + steps[i];
+                sl.AutoSize = false;
+                sl.TextAlign = ContentAlignment.MiddleCenter;
+                sl.Size = new Size(stepW, 28);
+                sl.Location = new Point(24 + i * (stepW + 6), 322);
+                sl.Font = UiFont(9F, FontStyle.Bold);
+                sl.ForeColor = StepGray;
+                stepLabels[i] = sl;
+                Controls.Add(sl);
+            }
+
             prog = new ProgressBar();
-            prog.Location = new Point(26, 330);
+            prog.Location = new Point(26, 360);
             prog.Size = new Size(508, 20);
             prog.Style = ProgressBarStyle.Continuous;
 
             lblStatus = new Label();
-            lblStatus.Location = new Point(26, 358);
+            lblStatus.Location = new Point(26, 388);
             lblStatus.Size = new Size(508, 40);
             lblStatus.ForeColor = Color.DimGray;
 
             btnInstall = new Button();
             btnInstall.Text = "安装";
-            btnInstall.Location = new Point(330, 410);
-            btnInstall.Size = new Size(100, 36);
-            btnInstall.BackColor = Color.FromArgb(0, 120, 215);
+            btnInstall.Location = new Point(330, 440);
+            btnInstall.Size = new Size(100, 38);
+            btnInstall.BackColor = AccentBlue;
             btnInstall.ForeColor = Color.White;
             btnInstall.FlatStyle = FlatStyle.Flat;
 
             btnExit = new Button();
             btnExit.Text = "退出";
-            btnExit.Location = new Point(438, 410);
-            btnExit.Size = new Size(96, 36);
+            btnExit.Location = new Point(438, 440);
+            btnExit.Size = new Size(96, 38);
 
             Controls.Add(title);
             Controls.Add(sub);
@@ -473,6 +548,15 @@ namespace DSHInstaller {
             Shown += delegate { BeginInvoke((Action)DetectNode); };
         }
 
+        // 更新步骤指示条：current = 当前步骤（0-3），完成 previous
+        void SetStep(int current) {
+            for (int i = 0; i < stepLabels.Length; i++) {
+                if (i < current) { stepLabels[i].Text = "✓ " + stepLabels[i].Text.Substring(2); stepLabels[i].ForeColor = StepDone; }
+                else if (i == current) { stepLabels[i].ForeColor = AccentBlue; }
+                else { stepLabels[i].ForeColor = StepGray; }
+            }
+        }
+
         void DetectNode() {
             try {
                 string toolsNode = Path.Combine(txtDir.Text.Trim().Trim('"'), "tools", "node", "node.exe");
@@ -482,7 +566,7 @@ namespace DSHInstaller {
                     if (v.Length > 0) {
                         hasNode = true;
                         lblNodeStatus.Text = "✔ 已检测到 Node.js " + v;
-                        lblNodeStatus.ForeColor = Color.Green;
+                        lblNodeStatus.ForeColor = Color.FromArgb(16, 150, 90);
                         chkNode.Visible = false;
                         return;
                     }
@@ -491,7 +575,7 @@ namespace DSHInstaller {
             catch { }
             hasNode = false;
             lblNodeStatus.Text = "✘ 未检测到 Node.js";
-            lblNodeStatus.ForeColor = Color.Red;
+            lblNodeStatus.ForeColor = Color.FromArgb(200, 60, 60);
             chkNode.Visible = true;
             chkNode.Checked = true;
         }
@@ -509,13 +593,55 @@ namespace DSHInstaller {
             else SetStatus(msg);
         }
 
+        // 根据进度消息更新步骤指示与进度条
+        void HandleProgress(string m) {
+            SetStatus(m);
+            Match me = Regex.Match(m, @"解压客户端文件\.\.\.\s*(\d+)\s*/\s*(\d+)");
+            if (me.Success) {
+                SetStep(0);
+                int cur = int.Parse(me.Groups[1].Value);
+                int total = int.Parse(me.Groups[2].Value);
+                if (total > 0) { prog.Style = ProgressBarStyle.Continuous; prog.Value = Math.Min(99, cur * 100 / total); }
+                return;
+            }
+            Match md = Regex.Match(m, @"下载 Node\.js\s*(\d+)%");
+            if (md.Success) {
+                SetStep(1);
+                prog.Style = ProgressBarStyle.Continuous;
+                prog.Value = Math.Min(99, int.Parse(md.Groups[1].Value));
+                return;
+            }
+            if (m.Contains("Node.js") && m.Contains("安装完成")) {
+                SetStep(1);
+                prog.Style = ProgressBarStyle.Continuous;
+                prog.Value = 99;
+                return;
+            }
+            if (m.Contains("正在安装 DeepSeek Harness 核心")) {
+                SetStep(2);
+                prog.Style = ProgressBarStyle.Marquee;
+                return;
+            }
+            if (m.Contains("安装完成")) {
+                SetStep(3);
+                prog.Style = ProgressBarStyle.Continuous;
+                prog.Value = 100;
+                return;
+            }
+            if (m.Contains("准备安装")) {
+                SetStep(0);
+                prog.Style = ProgressBarStyle.Marquee;
+            }
+        }
+
         void StartInstall(object sender, EventArgs e) {
             string dir = txtDir.Text.Trim().Trim('"');
-            if (dir.Length == 0) { MessageBox.Show(this, "请先选择安装位置", "蓝色大肥鱼"); return; }
+            if (dir.Length == 0) { MessageBox.Show(this, "请先选择安装位置", "DeepSeek Harness 安装"); return; }
             btnInstall.Enabled = false;
             btnBrowse.Enabled = false;
             prog.Value = 0;
             prog.Style = ProgressBarStyle.Marquee;
+            SetStep(0);
             SetStatus("开始安装...");
 
             BackgroundWorker bw = new BackgroundWorker();
@@ -528,6 +654,7 @@ namespace DSHInstaller {
             bw.ProgressChanged += delegate(object s, ProgressChangedEventArgs e2) {
                 string m = e2.UserState as string;
                 if (m != null) SafeStatus(m);
+                if (m != null) HandleProgress(m);
             };
             bw.RunWorkerCompleted += delegate(object s, RunWorkerCompletedEventArgs e2) {
                 btnInstall.Enabled = true;
@@ -537,7 +664,7 @@ namespace DSHInstaller {
                     SetStatus("安装失败：" + e2.Error.Message);
                     MessageBox.Show(this,
                         "安装失败：\n" + e2.Error.Message + "\n\n请检查网络后重试。",
-                        "蓝色大肥鱼", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        "DeepSeek Harness 安装", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 else {
                     SetStatus("安装完成！");

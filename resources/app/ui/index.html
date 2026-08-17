@@ -5,7 +5,7 @@
   <title>DeepSeek Harness</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; overflow: hidden; background: #1c2136;
+    html, body { height: 100%; overflow: hidden;
       font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; }
     #titlebar { position: fixed; top: 0; left: 0; right: 0; height: 40px;
       background: #ffffff; display: flex; align-items: center;
@@ -14,13 +14,48 @@
     #titlebar .t { color: #1a1a1a; font-size: 12.5px; flex: 1;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     #titlebar .spacer { width: 140px; height: 40px; -webkit-app-region: no-drag; }
-    #stage { position: fixed; top: 40px; left: 0; right: 0; bottom: 0; background: #1c2136; }
+    #stage { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+      background: #fff; opacity: 0; transition: opacity 0.35s ease; }
+    #stage.show { opacity: 1; }
     #stage iframe { width: 100%; height: 100%; border: 0; display: block; }
-    #boot, #error, #keyform { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+
+    /* ---------- 启动页 ---------- */
+    #boot { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+      display: none; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #141b33, #1c2648, #16213f, #1e2c55);
+      background-size: 300% 300%;
+      animation: gradientShift 9s ease infinite; }
+    #boot.show { display: flex; }
+    .boot-inner { display: flex; flex-direction: column; align-items: center;
+      animation: fadeUp 0.55s ease both; }
+    .logo-wrap { position: relative; width: 92px; height: 92px; margin-bottom: 22px; }
+    .logo-wrap .glow { position: absolute; inset: -14px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(88,138,255,0.35) 0%, rgba(88,138,255,0) 70%);
+      animation: breathGlow 2.4s ease-in-out infinite; }
+    .logo-wrap .logo { width: 92px; height: 92px; border-radius: 50%;
+      box-shadow: 0 6px 28px rgba(10, 16, 40, 0.55);
+      animation: breath 2.4s ease-in-out infinite; position: relative; }
+    .boot-title { color: #fff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;
+      margin-bottom: 26px; text-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+    .spinner { width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.16); border-top-color: #5b8cff;
+      animation: spin 0.9s linear infinite; margin-bottom: 18px; }
+    .boot-msg { color: #aeb9d6; font-size: 13.5px; display: flex; align-items: center; }
+    .dots { display: inline-block; width: 22px; text-align: left; }
+    .dots::after { content: ''; animation: dots 1.6s steps(4) infinite; }
+
+    @keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes breath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+    @keyframes breathGlow { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.18); opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75%,100% { content: '...'; } }
+
+    /* ---------- 错误页 / 输入框 ---------- */
+    #error, #keyform { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
       display: none; flex-direction: column; align-items: center; justify-content: center;
-      color: #fff; background: #1c2136; }
-    #boot .logo { width: 64px; height: 64px; margin-bottom: 16px; }
-    #boot .msg { color: #b8c0d0; font-size: 13px; margin-top: 12px; }
+      color: #fff; background: linear-gradient(135deg, #141b33, #1c2648); }
+    #error.show, #keyform.show { display: flex; }
     #error .t { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
     #error pre { color: #d0d0d0; font-size: 12px; max-width: 720px; max-height: 260px;
       overflow: auto; white-space: pre-wrap; margin: 8px 0 18px;
@@ -46,9 +81,15 @@
   <div id="stage"><iframe id="host"></iframe></div>
 
   <div id="boot">
-    <img class="logo" src="icon.png" alt="" />
-    <div class="t">DeepSeek Harness</div>
-    <div class="msg" id="bootMsg">正在启动服务...</div>
+    <div class="boot-inner">
+      <div class="logo-wrap">
+        <div class="glow"></div>
+        <img class="logo" src="icon.png" alt="" />
+      </div>
+      <div class="boot-title">DeepSeek Harness</div>
+      <div class="spinner"></div>
+      <div class="boot-msg"><span id="bootMsg">正在启动服务</span><span class="dots"></span></div>
+    </div>
   </div>
 
   <div id="error">
