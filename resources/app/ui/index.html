@@ -7,154 +7,140 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden;
       font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; }
-
-    /* ============ 标题栏（深色） ============ */
     #titlebar { position: fixed; top: 0; left: 0; right: 0; height: 40px;
-      background: #1e1e1e; display: flex; align-items: center;
+      background: #ffffff; display: flex; align-items: center;
       -webkit-app-region: drag; user-select: none; z-index: 9999; }
     #titlebar img { width: 18px; height: 18px; margin: 0 10px 0 14px; }
-    #titlebar .t { color: #cccccc; font-size: 12.5px; flex: 1;
+    #titlebar .t { color: #1a1a1a; font-size: 12.5px; flex: 1;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    #titlebar .spacer { width: 140px; height: 40px; -webkit-app-region: no-drag; }
+    #titlebar .spacer { width: 140px; height: 40px; -webkit-app-region: no-drag;
+      display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+    #keyBtn { width: 34px; height: 30px; border: 0; border-radius: 8px;
+      background: transparent; font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; -webkit-app-region: no-drag; margin-right: 4px; }
+    #keyBtn:hover { background: #eef1f5; }
+    #keyBtn.active { background: #e3ebf7; }
 
-    /* ============ 主体：活动栏 + 侧边栏 + 主区 ============ */
-    #main { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
-      display: flex; -webkit-app-region: no-drag; }
-
-    /* --- 活动栏（VSCode 最左图标条） --- */
-    #activitybar { width: 48px; background: #333333; display: flex;
-      flex-direction: column; align-items: center; padding-top: 6px; }
-    .act-btn { width: 48px; height: 44px; border: 0; background: transparent;
-      font-size: 17px; cursor: pointer; position: relative;
-      display: flex; align-items: center; justify-content: center; filter: grayscale(0.3); opacity: 0.55; }
-    .act-btn:hover { opacity: 1; filter: none; }
-    .act-btn.active { opacity: 1; filter: none; background: #1e1e1e; }
-    .act-btn.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-      width: 2px; background: #fff; }
-    #actSpacer { flex: 1; }
-
-    /* --- 侧边栏（文件树，深色） --- */
-    #tree-pane { width: 260px; min-width: 180px; background: #252526;
-      border-right: 1px solid #1a1a1a; display: none; flex-direction: column; }
-    body.view-files #tree-pane { display: flex; }
-    .side-head { height: 35px; display: flex; align-items: center; justify-content: space-between;
-      padding: 0 6px 0 14px; font-size: 11px; color: #bbbbbb; font-weight: 600;
-      letter-spacing: 0.4px; background: #252526; text-transform: uppercase; }
-    .side-head .acts { display: flex; }
-    .side-btn { width: 26px; height: 26px; border: 0; background: transparent;
-      border-radius: 4px; font-size: 13px; color: #bbbbbb; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; }
-    .side-btn:hover { background: #3a3d41; color: #fff; }
-
-    /* --- 主区 --- */
-    #content-pane { flex: 1 1 44%; min-width: 280px; display: none;
-      flex-direction: column; background: #1e1e1e; }
-    body.view-files #content-pane.open { display: flex; }
-    #right-pane { flex: 1 1 56%; position: relative; background: #1e1e1e; }
+    /* ---------- API Key / 余额面板 ---------- */
+    #panel { position: fixed; top: 44px; right: 10px; width: 330px;
+      background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(20,30,60,0.18),
+      0 2px 8px rgba(20,30,60,0.08); border: 1px solid #e6e9ef; z-index: 9998;
+      display: none; flex-direction: column; overflow: hidden; }
+    #panel.show { display: flex; }
+    #panel .phead { padding: 13px 18px 11px; border-bottom: 1px solid #f0f2f6;
+      font-size: 13px; font-weight: 700; color: #1a2233; display: flex;
+      align-items: center; justify-content: space-between; }
+    #panel .phead .sub { font-size: 11px; font-weight: 400; color: #97a0b0; }
+    #panel .card { padding: 13px 18px 15px; border-bottom: 1px solid #f0f2f6; }
+    #panel .card:last-child { border-bottom: 0; }
+    #panel .card-title { font-size: 11.5px; font-weight: 700; color: #8a94a6;
+      letter-spacing: 1px; margin-bottom: 9px; }
+    #panel .row { display: flex; justify-content: space-between; align-items: center;
+      font-size: 12.5px; color: #3c4452; padding: 2.5px 0; }
+    #panel .row b { font-weight: 600; color: #1a2233; }
+    #panel .row .ok { color: #1d9e63; }
+    #panel .row .bad { color: #e5484d; }
+    #panel .keyline { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+    #panel input[type=password] { flex: 1; padding: 7px 10px; border: 1px solid #dde2ea;
+      border-radius: 7px; font-size: 12px; outline: none; color: #1a2233; }
+    #panel input[type=password]:focus { border-color: #1f6fd6; }
+    .mini-btn { border: 0; border-radius: 7px; padding: 7px 13px; font-size: 12px;
+      cursor: pointer; background: #eef1f5; color: #3c4452; transition: background 0.15s; }
+    .mini-btn:hover { background: #e2e7ee; }
+    .mini-btn.blue { background: #1f6fd6; color: #fff; }
+    .mini-btn.blue:hover { background: #2a7ee8; }
+    .mini-btn:disabled { opacity: 0.5; cursor: default; }
+    #panel .hint { font-size: 11px; color: #97a0b0; margin-top: 8px; line-height: 1.55; }
+    #panel .bal-line { font-size: 13px; color: #3c4452; line-height: 1.7; }
+    #panel .bal-line .amt { font-size: 17px; font-weight: 700; color: #1a2233; }
+    #panel .bal-line .small { font-size: 11.5px; color: #97a0b0; }
     #stage { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
       background: #fff; opacity: 0; transition: opacity 0.35s ease; }
     #stage.show { opacity: 1; }
     #stage iframe { width: 100%; height: 100%; border: 0; display: block; }
 
-    /* --- 编辑器标题栏（VSCode 标签风格） --- */
-    #contentHead { height: 35px; display: flex; align-items: center; justify-content: space-between;
-      padding: 0 8px 0 14px; background: #252526; color: #cccccc; font-size: 12.5px;
-      border-bottom: 1px solid #1a1a1a; }
-    #contentHead .fname { display: flex; align-items: center; gap: 7px; }
-    #contentHead .fname .fi { font-size: 13px; }
-    #contentHead .acts { display: flex; gap: 2px; }
-    .ed-btn { border: 0; background: transparent; border-radius: 4px;
-      padding: 4px 10px; font-size: 11.5px; color: #bbbbbb; cursor: pointer; font-family: inherit; }
-    .ed-btn:hover { background: #3a3d41; color: #fff; }
-    .ed-btn.save { background: #0e639c; color: #fff; }
-    .ed-btn.save:hover { background: #1177bb; }
+    /* ---------- 选项卡栏 ---------- */
+    #tabbar { position: fixed; top: 40px; left: 0; right: 0; height: 38px;
+      background: #f5f6f8; border-bottom: 1px solid #e4e7ec; display: flex;
+      align-items: flex-end; padding: 0 10px; z-index: 9990; -webkit-app-region: no-drag; }
+    #tabbar .tab { border: 0; background: transparent; padding: 0 18px;
+      height: 34px; font-size: 12.5px; color: #6b7280; cursor: pointer;
+      border-bottom: 2px solid transparent; font-family: inherit; }
+    #tabbar .tab:hover { color: #374151; }
+    #tabbar .tab.active { color: #1f6fd6; border-bottom-color: #1f6fd6; font-weight: 600; }
 
-    /* --- 编辑器 --- */
-    #editor { flex: 1; border: 0; outline: none; resize: none; padding: 14px 16px;
-      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
-      font-size: 13px; line-height: 1.65; color: #d4d4d4; background: #1e1e1e;
-      tab-size: 2; caret-color: #fff; }
-    #editor::placeholder { color: #6a6a6a; }
-    #editorBar { font-size: 11px; color: #858585; padding: 4px 14px;
-      border-top: 1px solid #2a2a2a; background: #1e1e1e; display: flex;
-      justify-content: space-between; }
-    #editorBar .dirty { color: #cca700; }
+    /* ---------- 三栏主体（对话模式全屏，文件模式才出现树） ---------- */
+    #main { position: fixed; top: 78px; left: 0; right: 0; bottom: 0;
+      display: flex; -webkit-app-region: no-drag; }
+    #tree-pane { width: 250px; min-width: 160px; background: #fafbfc;
+      border-right: 1px solid #e4e7ec; display: none; flex-direction: column; }
+    #content-pane { flex: 1 1 42%; min-width: 260px; display: none;
+      flex-direction: column; border-right: 1px solid #e4e7ec; background: #fff; }
+    #right-pane { flex: 1 1 58%; position: relative; background: #fff; }
+    body.view-files #tree-pane { display: flex; }
+    body.view-files #content-pane.open { display: flex; }
+    .pane-head { height: 36px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 10px; font-size: 11.5px; color: #8a94a6; font-weight: 700;
+      letter-spacing: 0.5px; border-bottom: 1px solid #eef1f5; background: #fafbfc; }
+    .pane-head .act { display: flex; gap: 4px; }
+    .pane-head button { border: 0; background: #eef1f5; border-radius: 6px;
+      padding: 3px 9px; font-size: 11px; color: #4b5563; cursor: pointer; font-family: inherit; }
+    .pane-head button:hover { background: #e2e7ee; }
+    .pane-head button.primary { background: #1f6fd6; color: #fff; }
+    .pane-head button.primary:hover { background: #2a7ee8; }
 
-    /* ============ 文件树（VSCode 风格） ============ */
-    #tree { flex: 1; overflow: auto; padding: 4px 0; font-size: 12.5px; user-select: none; }
-    #tree .tnode { display: flex; align-items: center; padding: 3px 10px 3px 0;
-      white-space: nowrap; cursor: pointer; color: #cccccc; }
-    #tree .tnode:hover { background: #2a2d2e; }
-    #tree .tnode.sel { background: #094771; color: #fff; }
+    /* ---------- 文件树 ---------- */
+    #tree { flex: 1; overflow: auto; padding: 6px 0; font-size: 12.5px; user-select: none; }
+    #tree .tnode { display: flex; align-items: center; padding: 3px 8px 3px 0;
+      white-space: nowrap; cursor: pointer; color: #374151; }
+    #tree .tnode:hover { background: #eef1f6; }
+    #tree .tnode.sel { background: #e3ebf7; color: #1a3c66; }
     #tree .tarrow { width: 18px; text-align: center; color: #9aa4b4; font-size: 10px;
       flex: none; }
-    #tree .ticon { width: 20px; text-align: center; flex: none; font-size: 13px; }
+    #tree .ticon { width: 20px; text-align: center; flex: none; }
     #tree .tname { overflow: hidden; text-overflow: ellipsis; }
-    #tree .tsize { margin-left: 6px; color: #6f6f6f; font-size: 11px; flex: none; }
-    #tree .tempty { color: #8a8a8a; padding: 10px 14px; font-size: 12px; }
+    #tree .tsize { margin-left: 6px; color: #b0b8c4; font-size: 11px; flex: none; }
+    #tree .tempty { color: #9aa4b4; padding: 10px 14px; font-size: 12px; }
 
-    /* ============ API Key / 余额面板（深色浮层） ============ */
-    #panel { position: fixed; top: 46px; right: 10px; width: 330px;
-      background: #252526; border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-      border: 1px solid #3c3c3c; z-index: 9998;
-      display: none; flex-direction: column; overflow: hidden; }
-    #panel.show { display: flex; }
-    #panel .phead { padding: 13px 18px 11px; border-bottom: 1px solid #333333;
-      font-size: 13px; font-weight: 700; color: #e8e8e8; display: flex;
-      align-items: center; justify-content: space-between; }
-    #panel .phead .sub { font-size: 11px; font-weight: 400; color: #8a8a8a; }
-    #panel .card { padding: 13px 18px 15px; border-bottom: 1px solid #333333; }
-    #panel .card:last-child { border-bottom: 0; }
-    #panel .card-title { font-size: 11px; font-weight: 700; color: #8a8a8a;
-      letter-spacing: 1px; margin-bottom: 9px; }
-    #panel .row { display: flex; justify-content: space-between; align-items: center;
-      font-size: 12.5px; color: #cccccc; padding: 2.5px 0; }
-    #panel .row b { font-weight: 600; color: #e8e8e8; }
-    #panel .row .ok { color: #89d185; }
-    #panel .row .bad { color: #f48771; }
-    #panel .keyline { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
-    #panel input[type=password] { flex: 1; padding: 7px 10px; border: 1px solid #3c3c3c;
-      border-radius: 4px; font-size: 12px; outline: none; background: #1e1e1e; color: #e8e8e8; }
-    #panel input[type=password]:focus { border-color: #007acc; }
-    .mini-btn { border: 0; border-radius: 4px; padding: 7px 13px; font-size: 12px;
-      cursor: pointer; background: #3c3c3c; color: #cccccc; transition: background 0.15s; }
-    .mini-btn:hover { background: #4a4a4a; }
-    .mini-btn.blue { background: #0e639c; color: #fff; }
-    .mini-btn.blue:hover { background: #1177bb; }
-    .mini-btn:disabled { opacity: 0.5; cursor: default; }
-    #panel .hint { font-size: 11px; color: #8a8a8a; margin-top: 8px; line-height: 1.55; }
-    #panel .bal-line { font-size: 13px; color: #cccccc; line-height: 1.7; }
-    #panel .bal-line .amt { font-size: 17px; font-weight: 700; color: #e8e8e8; }
-    #panel .bal-line .small { font-size: 11.5px; color: #8a8a8a; }
+    /* ---------- 编辑器 ---------- */
+    #editor { flex: 1; border: 0; outline: none; resize: none; padding: 12px 14px;
+      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+      font-size: 13px; line-height: 1.6; color: #1f2430; background: #fff;
+      tab-size: 2; }
+    #editor:focus { background: #fff; }
+    #editorBar { font-size: 11px; color: #8a94a6; padding: 4px 10px;
+      border-top: 1px solid #f0f2f6; background: #fafbfc; display: flex;
+      justify-content: space-between; }
+    #editorBar .dirty { color: #d97706; }
 
-    /* ============ 右键菜单（深色） ============ */
-    #ctxMenu { position: fixed; z-index: 10000; min-width: 160px;
-      background: #252526; border: 1px solid #3c3c3c; border-radius: 6px;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.5); padding: 5px; display: none; }
+    /* ---------- 右键菜单 ---------- */
+    #ctxMenu { position: fixed; z-index: 10000; min-width: 150px;
+      background: #fff; border: 1px solid #e2e6ec; border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(20,30,60,0.16); padding: 5px; display: none; }
     #ctxMenu.show { display: block; }
-    #ctxMenu .mi { padding: 7px 12px; font-size: 12.5px; color: #cccccc;
-      border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-    #ctxMenu .mi:hover { background: #094771; color: #fff; }
-    #ctxMenu .mi.danger { color: #f48771; }
-    #ctxMenu .mi.danger:hover { background: #5a1d1d; color: #fff; }
-    #ctxMenu .sep { height: 1px; background: #3c3c3c; margin: 4px 6px; }
+    #ctxMenu .mi { padding: 7px 12px; font-size: 12.5px; color: #374151;
+      border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    #ctxMenu .mi:hover { background: #eef2f8; }
+    #ctxMenu .mi.danger { color: #d64545; }
+    #ctxMenu .mi.danger:hover { background: #fdeeee; }
+    #ctxMenu .sep { height: 1px; background: #eef1f5; margin: 4px 6px; }
 
-    /* ============ 输入弹窗（深色） ============ */
-    #promptMask { position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    /* ---------- 输入弹窗 ---------- */
+    #promptMask { position: fixed; inset: 0; background: rgba(15,23,42,0.35);
       z-index: 10001; display: none; align-items: center; justify-content: center; }
     #promptMask.show { display: flex; }
-    #promptBox { width: 340px; background: #252526; border: 1px solid #3c3c3c;
-      border-radius: 8px; padding: 20px 22px 18px; box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
-    #promptBox .pt { font-size: 14px; font-weight: 700; color: #e8e8e8; margin-bottom: 6px; }
-    #promptBox .pd { font-size: 11.5px; color: #8a8a8a; margin-bottom: 12px; }
-    #promptBox input { width: 100%; padding: 8px 11px; border: 1px solid #3c3c3c;
-      border-radius: 4px; font-size: 13px; outline: none; margin-bottom: 14px;
-      background: #1e1e1e; color: #e8e8e8; }
-    #promptBox input:focus { border-color: #007acc; }
+    #promptBox { width: 340px; background: #fff; border-radius: 12px;
+      padding: 20px 22px 18px; box-shadow: 0 16px 48px rgba(20,30,60,0.25); }
+    #promptBox .pt { font-size: 14px; font-weight: 700; color: #1a2233; margin-bottom: 6px; }
+    #promptBox .pd { font-size: 11.5px; color: #97a0b0; margin-bottom: 12px; }
+    #promptBox input { width: 100%; padding: 8px 11px; border: 1px solid #dde2ea;
+      border-radius: 7px; font-size: 13px; outline: none; margin-bottom: 14px; }
+    #promptBox input:focus { border-color: #1f6fd6; }
     #promptBox .btns { display: flex; justify-content: flex-end; gap: 8px; }
     #promptBox .mini-btn { padding: 7px 16px; font-size: 12.5px; }
 
-    /* ============ 启动页 ============ */
+    /* ---------- 启动页 ---------- */
     #boot { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
       display: none; align-items: center; justify-content: center;
       background: linear-gradient(135deg, #141b33, #1c2648, #16213f, #1e2c55);
@@ -186,7 +172,7 @@
     @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
     @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75%,100% { content: '...'; } }
 
-    /* ============ 错误页 / 首次输入 ============ */
+    /* ---------- 错误页 / 输入框 ---------- */
     #error, #keyform { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
       display: none; flex-direction: column; align-items: center; justify-content: center;
       color: #fff; background: linear-gradient(135deg, #141b33, #1c2648); }
@@ -210,47 +196,41 @@
   <div id="titlebar">
     <img src="icon.png" alt="" />
     <div class="t" id="titleText">DeepSeek Harness</div>
+    <button id="keyBtn" title="API Key 与余额">🔑</button>
     <div class="spacer"></div>
   </div>
 
-  <!-- VSCode 式三栏：活动栏 + 侧边栏 + 主区 -->
-  <div id="main">
-    <!-- 活动栏 -->
-    <div id="activitybar">
-      <button class="act-btn active" id="actChat" title="对话">💬</button>
-      <button class="act-btn" id="actFiles" title="文件">📁</button>
-      <div id="actSpacer"></div>
-      <button class="act-btn" id="keyBtn" title="API Key 与余额">🔑</button>
-    </div>
+  <!-- 选项卡栏 -->
+  <div id="tabbar">
+    <button class="tab active" data-view="chat" id="tabChat">💬 对话</button>
+    <button class="tab" data-view="files" id="tabFiles">📁 文件</button>
+  </div>
 
-    <!-- 侧边栏：资源管理器 -->
+  <!-- 三栏主体：左=文件树 中=文件内容 右=对话 -->
+  <div id="main">
     <div id="tree-pane">
-      <div class="side-head">
+      <div class="pane-head">
         <span>资源管理器</span>
-        <span class="acts">
-          <button class="side-btn" id="btnNewFile" title="新建文件">📄</button>
-          <button class="side-btn" id="btnNewDir" title="新建文件夹">📁</button>
-          <button class="side-btn" id="treeRefresh" title="刷新">🔄</button>
+        <span class="act">
+          <button id="btnNewFile" title="新建文件">📄 新建</button>
+          <button id="btnNewDir" title="新建文件夹">📁 新建夹</button>
+          <button id="treeRefresh">刷新</button>
         </span>
       </div>
       <div id="tree"><div class="tempty">加载中…</div></div>
     </div>
-
-    <!-- 主区：编辑器 -->
     <div id="content-pane">
-      <div id="contentHead">
-        <span class="fname"><span class="fi" id="contentIcon">📄</span><span id="contentName">未打开文件</span></span>
-        <span class="acts">
-          <button class="ed-btn" id="btnUndo" title="撤销 (Ctrl+Z)">↩ 撤销</button>
-          <button class="ed-btn" id="btnRedo" title="重做 (Ctrl+Y)">↪ 重做</button>
-          <button class="ed-btn save" id="btnSave" title="保存 (Ctrl+S)">保存</button>
+      <div class="pane-head">
+        <span id="contentName">未打开文件</span>
+        <span class="act">
+          <button id="btnUndo" title="撤销 (Ctrl+Z)">↩ 撤销</button>
+          <button id="btnRedo" title="重做 (Ctrl+Y)">↪ 重做</button>
+          <button id="btnSave" class="primary" title="保存 (Ctrl+S)">保存</button>
         </span>
       </div>
-      <textarea id="editor" spellcheck="false" placeholder="在左侧文件树中选择一个文本文件"></textarea>
+      <textarea id="editor" spellcheck="false" placeholder="在左侧文件树中选择一个文本文件，或点击「+ 新建」创建文件"></textarea>
       <div id="editorBar"><span id="editorPath"></span><span id="editorDirty"></span></div>
     </div>
-
-    <!-- 主区：对话 -->
     <div id="right-pane">
       <div id="stage"><iframe id="host"></iframe></div>
     </div>

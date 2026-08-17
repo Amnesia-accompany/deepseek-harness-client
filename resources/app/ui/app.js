@@ -155,14 +155,14 @@ $('pBalanceBtn').onclick = async () => {
   setTimeout(() => { btn.disabled = false; btn.textContent = '查询余额'; }, 2000);
 };
 
-// ================= 活动栏：对话 / 文件 =================
-$('actChat').onclick = () => switchView('chat');
-$('actFiles').onclick = () => switchView('files');
+// ================= 选项卡：对话 / 文件 =================
+$('tabChat').onclick = () => switchView('chat');
+$('tabFiles').onclick = () => switchView('files');
 
 function switchView(v) {
   document.body.classList.toggle('view-files', v === 'files');
-  $('actChat').classList.toggle('active', v === 'chat');
-  $('actFiles').classList.toggle('active', v === 'files');
+  $('tabChat').classList.toggle('active', v === 'chat');
+  $('tabFiles').classList.toggle('active', v === 'files');
   if (v === 'files') {
     if (currentFile) $('content-pane').classList.add('open');
     loadTree();
@@ -297,7 +297,6 @@ async function openFile(rel, name) {
   historyIdx = 0;
   $('editor').value = r.content;
   $('contentName').textContent = name;
-  $('contentIcon').textContent = r.name.toLowerCase().match(/\.(md|txt|log|json|js|html|css|py|ps1|bat|yaml|yml)$/) ? '📝' : '📄';
   $('editorPath').textContent = rel;
   $('editorDirty').textContent = '';
   $('content-pane').classList.add('open');
