@@ -407,6 +407,22 @@ function initIpc() {
     }
   });
 
+  ipcMain.handle('fs:reveal', async (e, rel) => {
+    try {
+      const target = safeResolve(rel);
+      if (!target) return { ok: false, error: '路径越界' };
+      const stat = fs.statSync(target);
+      if (stat.isDirectory()) {
+        shell.openPath(target);
+      } else {
+        shell.showItemInFolder(target);
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
   ipcMain.handle('fs:read', async (e, rel) => {
     try {
       const file = safeResolve(rel);

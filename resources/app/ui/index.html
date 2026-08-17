@@ -60,15 +60,16 @@
     #stage.show { opacity: 1; }
     #stage iframe { width: 100%; height: 100%; border: 0; display: block; }
 
-    /* ---------- 选项卡栏 ---------- */
-    #tabbar { position: fixed; top: 40px; left: 0; right: 0; height: 38px;
-      background: #f5f6f8; border-bottom: 1px solid #e4e7ec; display: flex;
-      align-items: flex-end; padding: 0 10px; z-index: 9990; -webkit-app-region: no-drag; }
-    #tabbar .tab { border: 0; background: transparent; padding: 0 18px;
-      height: 34px; font-size: 12.5px; color: #6b7280; cursor: pointer;
-      border-bottom: 2px solid transparent; font-family: inherit; }
-    #tabbar .tab:hover { color: #374151; }
-    #tabbar .tab.active { color: #1f6fd6; border-bottom-color: #1f6fd6; font-weight: 600; }
+    /* ---------- 选项卡栏（白色，简洁） ---------- */
+    #tabbar { position: fixed; top: 40px; left: 0; right: 0; height: 32px;
+      background: #ffffff; border-bottom: 1px solid #eef1f5; display: flex;
+      align-items: center; padding: 0 12px; gap: 2px; z-index: 9990;
+      -webkit-app-region: no-drag; }
+    #tabbar .tab { border: 0; background: transparent; padding: 4px 14px;
+      font-size: 12.5px; color: #6b7280; cursor: pointer; border-radius: 6px;
+      font-family: inherit; transition: all 0.15s; }
+    #tabbar .tab:hover { background: #f3f5f8; color: #374151; }
+    #tabbar .tab.active { background: #e8f1fd; color: #1f6fd6; font-weight: 600; }
 
     /* ---------- 三栏主体（对话模式全屏，文件模式才出现树） ---------- */
     #main { position: fixed; top: 78px; left: 0; right: 0; bottom: 0;
@@ -83,12 +84,12 @@
     .pane-head { height: 36px; display: flex; align-items: center; justify-content: space-between;
       padding: 0 10px; font-size: 11.5px; color: #8a94a6; font-weight: 700;
       letter-spacing: 0.5px; border-bottom: 1px solid #eef1f5; background: #fafbfc; }
-    .pane-head .act { display: flex; gap: 4px; }
-    .pane-head button { border: 0; background: #eef1f5; border-radius: 6px;
-      padding: 3px 9px; font-size: 11px; color: #4b5563; cursor: pointer; font-family: inherit; }
-    .pane-head button:hover { background: #e2e7ee; }
-    .pane-head button.primary { background: #1f6fd6; color: #fff; }
-    .pane-head button.primary:hover { background: #2a7ee8; }
+    .pane-head .act { display: flex; gap: 2px; }
+    .icon-btn { width: 26px; height: 26px; border: 0; background: transparent;
+      border-radius: 5px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; color: #7a8494; }
+    .icon-btn svg { width: 16px; height: 16px; }
+    .icon-btn:hover { background: #e8ecf2; color: #1f6fd6; }
 
     /* ---------- 文件树 ---------- */
     #tree { flex: 1; overflow: auto; padding: 6px 0; font-size: 12.5px; user-select: none; }
@@ -202,8 +203,8 @@
 
   <!-- 选项卡栏 -->
   <div id="tabbar">
-    <button class="tab active" data-view="chat" id="tabChat">💬 对话</button>
-    <button class="tab" data-view="files" id="tabFiles">📁 文件</button>
+    <button class="tab active" data-view="chat" id="tabChat">对话</button>
+    <button class="tab" data-view="files" id="tabFiles">文件</button>
   </div>
 
   <!-- 三栏主体：左=文件树 中=文件内容 右=对话 -->
@@ -212,9 +213,18 @@
       <div class="pane-head">
         <span>资源管理器</span>
         <span class="act">
-          <button id="btnNewFile" title="新建文件">📄 新建</button>
-          <button id="btnNewDir" title="新建文件夹">📁 新建夹</button>
-          <button id="treeRefresh">刷新</button>
+          <button class="icon-btn" id="btnNewFile" title="新建文件">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 2.5 H8 L9.5 4 H12.5 C13.05 4 13.5 4.45 13.5 5 V11.5 C13.5 12.05 13.05 12.5 12.5 12.5 H4 C3.45 12.5 3 12.05 3 11.5 V3.5 C3 2.95 3.45 2.5 4 2.5 Z"/>
+              <path d="M8 6.5 V9.5 M6.5 8 H9.5"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="btnNewDir" title="新建文件夹">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 4.5 C2 3.95 2.45 3.5 3 3.5 H5.5 L6.7 4.8 H13 C13.55 4.8 14 5.25 14 5.8 V11.2 C14 11.75 13.55 12.2 13 12.2 H3 C2.45 12.2 2 11.75 2 11.2 Z"/>
+              <path d="M7.8 7 V10 M6.3 8.5 H9.3"/>
+            </svg>
+          </button>
         </span>
       </div>
       <div id="tree"><div class="tempty">加载中…</div></div>

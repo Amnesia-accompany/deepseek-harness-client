@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('dsh', {
   fsCreateFile: (parentRel, name) => ipcRenderer.invoke('fs:create-file', parentRel, name),
   fsCreateDir: (parentRel, name) => ipcRenderer.invoke('fs:create-dir', parentRel, name),
   fsDelete: (rel) => ipcRenderer.invoke('fs:delete', rel),
+  fsReveal: (rel) => ipcRenderer.invoke('fs:reveal', rel),
   logTail: () => ipcRenderer.invoke('app:log-tail'),
   log: (msg) => ipcRenderer.send('app:log', msg),
 });

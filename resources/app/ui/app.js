@@ -210,6 +210,7 @@ function makeNode(it, parentRel) {
   wrap.className = 'tnode' + (it.dir ? ' tdir' : '');
   wrap.dataset.rel = rel;
   wrap.dataset.dir = it.dir ? '1' : '0';
+  wrap.dataset.name = it.name;
   const arrow = document.createElement('span');
   arrow.className = 'tarrow';
   arrow.textContent = it.dir ? (expandedDirs[rel] ? '▼' : '▶') : '';
@@ -369,7 +370,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-$('treeRefresh').onclick = () => loadTree();
 $('btnNewFile').onclick = () => promptNewFile('');
 $('btnNewDir').onclick = () => promptNewDir('');
 
@@ -413,12 +413,19 @@ document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const isDir = node.dataset.dir === '1';
   const rel = node.dataset.rel;
+  const name = node.dataset.name || '';
   const parentRel = isDir ? rel : (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
   ctxTarget = parentRel ? { rel: parentRel, dir: true } : null;
-  const items = [
+  const items = [];
+  if (isDir) {
+    items.push({ icon: '📂', label: '打开文件夹', action: () => revealPath(rel) });
+  } else {
+    items.push({ icon: '📖', label: '打开文件', action: () => openFile(rel, name) });
+  }
+  items.push(
     { icon: '📄', label: '新建文件', action: () => promptNewFile(parentRel || '') },
     { icon: '📁', label: '新建文件夹', action: () => promptNewDir(parentRel || '') },
-  ];
+  );
   items.push({ sep: true });
   items.push({
     icon: '🗑', label: isDir ? '删除文件夹' : '删除文件', danger: true,
@@ -427,7 +434,7 @@ document.addEventListener('contextmenu', (e) => {
   showCtx(e.clientX, e.clientY, items);
 });
 
-// 树空白处右键：新建到根目录
+// 树空白处右键：新建 / 刷新
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest || !e.target.closest('#tree')) return;
   if (e.target.closest('.tnode')) return; // 节点右键已处理
@@ -436,9 +443,15 @@ document.addEventListener('contextmenu', (e) => {
   const items = [
     { icon: '📄', label: '新建文件', action: () => promptNewFile('') },
     { icon: '📁', label: '新建文件夹', action: () => promptNewDir('') },
+    { icon: '🔄', label: '刷新', action: () => loadTree() },
   ];
   showCtx(e.clientX, e.clientY, items);
 });
+
+async function revealPath(rel) {
+  const r = await window.dsh.fsReveal(rel);
+  if (!r.ok) alert('打开失败：' + r.error);
+}
 
 // 节点行内右键（与空白区分：确保命中节点）
 // 节点本身也有 contextmenu —— 用上面的统一处理即可（node 命中）
