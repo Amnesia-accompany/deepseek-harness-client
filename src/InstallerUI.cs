@@ -236,7 +236,7 @@ namespace DSHInstaller {
         public InstallForm() {
             Text = "DeepSeek Harness 安装";
             Font = UiFont(9F, FontStyle.Regular);
-            ClientSize = new Size(600, 648);
+            ClientSize = new Size(600, 674);
             FormBorderStyle = FormBorderStyle.None;   // 无边框自绘
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.White;
@@ -295,20 +295,20 @@ namespace DSHInstaller {
             card1.Text = "安装位置";
             card1.Font = UiFont(8.5F, FontStyle.Regular);
             card1.Location = new Point(32, 238);
-            card1.Size = new Size(536, 62);
+            card1.Size = new Size(536, 68);
             Controls.Add(card1);
 
             txtDir = new TextBox();
             txtDir.Text = InstallerLogic.DefaultDir();
-            txtDir.Location = new Point(48, 268);
-            txtDir.Size = new Size(404, 24);
+            txtDir.Location = new Point(18, 34);
+            txtDir.Size = new Size(398, 24);
             txtDir.BorderStyle = BorderStyle.FixedSingle;
-            Controls.Add(txtDir);
+            card1.Controls.Add(txtDir);
 
             btnBrowse = new RoundedButton();
             btnBrowse.Text = "浏览";
             btnBrowse.Size = new Size(86, 26);
-            btnBrowse.Location = new Point(462, 266);
+            btnBrowse.Location = new Point(430, 33);
             btnBrowse.BackColor = Color.FromArgb(232, 242, 255);
             btnBrowse.ForeColor = MainBlue;
             btnBrowse.HoverColor = Color.FromArgb(214, 232, 255);
@@ -320,54 +320,54 @@ namespace DSHInstaller {
                     if (d.ShowDialog(this) == DialogResult.OK) txtDir.Text = d.SelectedPath;
                 }
             };
-            Controls.Add(btnBrowse);
+            card1.Controls.Add(btnBrowse);
 
             // ---- 卡片：运行环境检测 ----
             RoundedCard card2 = new RoundedCard();
             card2.Text = "运行环境检测";
             card2.Font = UiFont(8.5F, FontStyle.Regular);
-            card2.Location = new Point(32, 312);
-            card2.Size = new Size(536, 88);
+            card2.Location = new Point(32, 318);
+            card2.Size = new Size(536, 96);
             Controls.Add(card2);
 
             lblNodeStatus = new Label();
-            lblNodeStatus.Location = new Point(48, 342);
+            lblNodeStatus.Location = new Point(18, 34);
             lblNodeStatus.AutoSize = true;
             lblNodeStatus.Font = UiFont(9.5F, FontStyle.Bold);
             lblNodeStatus.Text = "检测中...";
-            Controls.Add(lblNodeStatus);
+            card2.Controls.Add(lblNodeStatus);
 
             chkNode = new CheckBox();
             chkNode.Text = "安装 Node.js（未检测到，将自动下载约 35MB）";
-            chkNode.Location = new Point(48, 368);
+            chkNode.Location = new Point(18, 64);
             chkNode.AutoSize = true;
             chkNode.Checked = true;
             chkNode.ForeColor = TextGray;
-            Controls.Add(chkNode);
+            card2.Controls.Add(chkNode);
 
             // ---- 卡片：安装选项 ----
             RoundedCard card3 = new RoundedCard();
             card3.Text = "安装选项";
             card3.Font = UiFont(8.5F, FontStyle.Regular);
-            card3.Location = new Point(32, 412);
-            card3.Size = new Size(536, 78);
+            card3.Location = new Point(32, 426);
+            card3.Size = new Size(536, 88);
             Controls.Add(card3);
 
             chkShortcut = new CheckBox();
             chkShortcut.Text = "添加桌面快捷方式";
-            chkShortcut.Location = new Point(48, 440);
+            chkShortcut.Location = new Point(18, 34);
             chkShortcut.AutoSize = true;
             chkShortcut.Checked = true;
             chkShortcut.ForeColor = TextGray;
-            Controls.Add(chkShortcut);
+            card3.Controls.Add(chkShortcut);
 
             chkLaunch = new CheckBox();
             chkLaunch.Text = "安装完成后直接打开";
-            chkLaunch.Location = new Point(48, 462);
+            chkLaunch.Location = new Point(18, 62);
             chkLaunch.AutoSize = true;
             chkLaunch.Checked = true;
             chkLaunch.ForeColor = TextGray;
-            Controls.Add(chkLaunch);
+            card3.Controls.Add(chkLaunch);
 
             // ---- 步骤徽章 ----
             string[] steps = { "解压文件", "运行环境", "安装依赖", "完成" };
@@ -377,7 +377,7 @@ namespace DSHInstaller {
                 sb.StepText = steps[i];
                 sb.BadgeNumber = i + 1;
                 sb.Size = new Size(120, 28);
-                sb.Location = new Point(36 + i * 135, 502);
+                sb.Location = new Point(36 + i * 135, 526);
                 sb.Font = UiFont(9F, FontStyle.Regular);
                 badges[i] = sb;
                 Controls.Add(sb);
@@ -385,14 +385,14 @@ namespace DSHInstaller {
 
             // ---- 进度条 ----
             prog = new RoundedProgressBar();
-            prog.Location = new Point(36, 538);
+            prog.Location = new Point(36, 562);
             prog.Size = new Size(528, 14);
             prog.Maximum = 100;
             Controls.Add(prog);
 
             // ---- 状态 ----
             lblStatus = new Label();
-            lblStatus.Location = new Point(36, 560);
+            lblStatus.Location = new Point(36, 584);
             lblStatus.Size = new Size(528, 22);
             lblStatus.ForeColor = TextGray;
             lblStatus.Font = UiFont(8.5F, FontStyle.Regular);
@@ -403,7 +403,7 @@ namespace DSHInstaller {
             btnInstall = new RoundedButton();
             btnInstall.Text = "开 始 安 装";
             btnInstall.Size = new Size(170, 44);
-            btnInstall.Location = new Point(182, 588);
+            btnInstall.Location = new Point(182, 614);
             btnInstall.BackColor = MainBlue;
             btnInstall.ForeColor = Color.White;
             btnInstall.HoverColor = MainBlueHover;
@@ -414,7 +414,7 @@ namespace DSHInstaller {
             btnExit = new RoundedButton();
             btnExit.Text = "取 消";
             btnExit.Size = new Size(96, 44);
-            btnExit.Location = new Point(368, 588);
+            btnExit.Location = new Point(368, 614);
             btnExit.BackColor = Color.FromArgb(236, 242, 250);
             btnExit.ForeColor = Color.FromArgb(90, 105, 130);
             btnExit.HoverColor = Color.FromArgb(224, 232, 244);
