@@ -37,18 +37,24 @@ let uiUrl = null;
 // ---------------- 配置 ----------------
 function stripBom(s) { return s.replace(/^\uFEFF/, ''); }
 
+// 外部根目录/文件（用户通过「打开文件夹/打开文件」加入资源管理器）
+let extraRoots = [];
+
 function readConfig() {
   try {
     const cfg = JSON.parse(stripBom(fs.readFileSync(CONFIG_FILE, 'utf8')));
     if (typeof cfg.port === 'number') port = cfg.port;
     if (typeof cfg.baseURL === 'string' && cfg.baseURL) baseURL = cfg.baseURL;
+    if (Array.isArray(cfg.extraRoots)) {
+      extraRoots = cfg.extraRoots.filter((r) => typeof r === 'string' && r.length > 0);
+    }
   } catch (e) { /* 默认 3080 */ }
 }
 
 function saveConfig() {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    const cfg = { port, baseURL: baseURL || null, configured: true };
+    const cfg = { port, baseURL: baseURL || null, configured: true, extraRoots };
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
   } catch (e) { }
 }
@@ -371,18 +377,82 @@ function initIpc() {
   ipcMain.handle('app:log-tail', () => logTail());
   ipcMain.on('app:log', (e, msg) => logLine('[ui] ' + msg));
 
-  // ---------------- 文件浏览器（限定工作区，防路径穿越） ----------------
+  // ---------------- 文件浏览器（工作区 + 外部根，防路径穿越） ----------------
   const WORKSPACE_REAL = path.resolve(WORKSPACE);
 
   function safeResolve(rel) {
-    // 入参允许绝对路径或相对路径，最终必须落在工作区内
+    // 绝对路径走外部根；相对路径走工作区；最终必须落在已注册根之下
     let target;
     try {
-      target = path.resolve(WORKSPACE_REAL, rel || '.');
+      target = path.isAbsolute(rel || '') ? path.resolve(rel) : path.resolve(WORKSPACE_REAL, rel || '.');
     } catch (e) { return null; }
-    if (target !== WORKSPACE_REAL && !target.startsWith(WORKSPACE_REAL + path.sep)) return null;
-    return target;
+    if (target === WORKSPACE_REAL || target.startsWith(WORKSPACE_REAL + path.sep)) return target;
+    for (const r of extraRoots) {
+      const rr = path.resolve(r);
+      if (target === rr || target.startsWith(rr + path.sep)) return target;
+    }
+    return null;
   }
+
+  // 所有根（工作区 + 外部根）
+  function allRoots() {
+    const list = [{ rel: '', name: path.basename(WORKSPACE_REAL), dir: true, ext: false }];
+    for (const r of extraRoots) {
+      try {
+        const st = fs.statSync(r);
+        list.push({ rel: r, name: path.basename(r), dir: st.isDirectory(), ext: true });
+      } catch (e) { }
+    }
+    return list;
+  }
+
+  ipcMain.handle('fs:roots', () => allRoots());
+
+  // 打开系统文件夹选择框 → 加入资源管理器
+  ipcMain.handle('fs:pick-folder', async () => {
+    if (!mainWin) return { ok: false, error: '窗口未就绪' };
+    const r = await dialog.showOpenDialog(mainWin, {
+      title: '选择要加入资源管理器的文件夹',
+      properties: ['openDirectory'],
+    });
+    if (r.canceled || !r.filePaths.length) return { ok: false, canceled: true };
+    const p = path.resolve(r.filePaths[0]);
+    if (extraRoots.indexOf(p) >= 0) return { ok: false, error: '该文件夹已在资源管理器中' };
+    try {
+      if (!fs.statSync(p).isDirectory()) return { ok: false, error: '不是文件夹' };
+    } catch (e) { return { ok: false, error: '无法访问该文件夹' }; }
+    extraRoots.push(p);
+    saveConfig();
+    return { ok: true, roots: allRoots() };
+  });
+
+  // 打开系统文件选择框 → 加入资源管理器
+  ipcMain.handle('fs:pick-file', async () => {
+    if (!mainWin) return { ok: false, error: '窗口未就绪' };
+    const r = await dialog.showOpenDialog(mainWin, {
+      title: '选择要加入资源管理器的文件',
+      properties: ['openFile'],
+    });
+    if (r.canceled || !r.filePaths.length) return { ok: false, canceled: true };
+    const p = path.resolve(r.filePaths[0]);
+    if (extraRoots.indexOf(p) >= 0) return { ok: false, error: '该文件已在资源管理器中' };
+    try {
+      if (!fs.statSync(p).isFile()) return { ok: false, error: '不是文件' };
+    } catch (e) { return { ok: false, error: '无法访问该文件' }; }
+    extraRoots.push(p);
+    saveConfig();
+    return { ok: true, roots: allRoots() };
+  });
+
+  // 从资源管理器移除根（不删除磁盘文件）
+  ipcMain.handle('fs:remove-root', async (e, rel) => {
+    if (!rel || !path.isAbsolute(rel)) return { ok: false, error: '只能移除外部根' };
+    const idx = extraRoots.indexOf(path.resolve(rel));
+    if (idx < 0) return { ok: false, error: '未找到该根' };
+    extraRoots.splice(idx, 1);
+    saveConfig();
+    return { ok: true, roots: allRoots() };
+  });
 
   ipcMain.handle('fs:root', () => WORKSPACE_REAL);
 

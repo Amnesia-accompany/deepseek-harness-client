@@ -195,51 +195,54 @@ async function listDir(rel) {
 async function loadTree() {
   const tree = $('tree');
   try {
-    const items = await listDir('');
+    const roots = await window.dsh.fsRoots();
     tree.innerHTML = '';
-    items.forEach((it) => tree.appendChild(makeNode(it, '')));
-    if (!items.length) tree.innerHTML = '<div class="tempty">工作区为空</div>';
+    for (const r of roots) {
+      tree.appendChild(makeRootNode(r));
+    }
+    if (!roots.length) tree.innerHTML = '<div class="tempty">工作区为空</div>';
   } catch (e) {
     tree.innerHTML = '<div class="tempty">加载失败：' + escHtml(e.message) + '</div>';
   }
 }
 
-function makeNode(it, parentRel) {
-  const rel = parentRel ? parentRel + '/' + it.name : it.name;
+function makeRootNode(root) {
+  // 外部根：绝对路径作 rel；工作区根：'' 
+  const it = { name: root.name, dir: root.dir, size: 0, external: root.ext };
+  const rel = root.rel || '';
   const wrap = document.createElement('div');
-  wrap.className = 'tnode' + (it.dir ? ' tdir' : '');
+  wrap.className = 'tnode tdir' + (root.ext ? ' text-root' : '');
   wrap.dataset.rel = rel;
-  wrap.dataset.dir = it.dir ? '1' : '0';
+  wrap.dataset.dir = '1';
   wrap.dataset.name = it.name;
+  const row = document.createElement('div');
+  row.className = 'tnode-row';
   const arrow = document.createElement('span');
   arrow.className = 'tarrow';
-  arrow.textContent = it.dir ? (expandedDirs[rel] ? '▼' : '▶') : '';
+  if (root.dir) {
+    arrow.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 L10 8 L6 12"/></svg>';
+  }
   const icon = document.createElement('span');
   icon.className = 'ticon';
-  icon.textContent = it.dir ? '📁' : '📄';
+  icon.textContent = root.dir ? '📁' : '📄';
   const name = document.createElement('span');
   name.className = 'tname';
   name.textContent = it.name;
-  wrap.appendChild(arrow);
-  wrap.appendChild(icon);
-  wrap.appendChild(name);
-  if (!it.dir) {
-    const sz = document.createElement('span');
-    sz.className = 'tsize';
-    sz.textContent = fmtSize(it.size);
-    wrap.appendChild(sz);
-  }
-  wrap.style.paddingLeft = (parentRel ? (parentRel.split('/').length) * 16 : 0) + 8 + 'px';
+  row.appendChild(arrow);
+  row.appendChild(icon);
+  row.appendChild(name);
+  wrap.appendChild(row);
+  const childBox = document.createElement('div');
+  childBox.style.display = 'none';
+  wrap.appendChild(childBox);
 
-  if (it.dir) {
-    const childBox = document.createElement('div');
-    childBox.style.display = expandedDirs[rel] ? 'block' : 'none';
-    wrap.appendChild(childBox);
+  if (root.dir) {
     wrap.onclick = async (ev) => {
+      if (!ev.target.closest('.tnode-row') && ev.target !== wrap) return;
       ev.stopPropagation();
       const isOpen = childBox.style.display !== 'none';
       childBox.style.display = isOpen ? 'none' : 'block';
-      arrow.textContent = isOpen ? '▶' : '▼';
+      arrow.classList.toggle('open', !isOpen);
       if (!isOpen) {
         try {
           const kids = await listDir(rel);
@@ -261,6 +264,81 @@ function makeNode(it, parentRel) {
     };
   } else {
     wrap.onclick = async (ev) => {
+      if (!ev.target.closest('.tnode-row')) return;
+      ev.stopPropagation();
+      document.querySelectorAll('#tree .tnode.sel').forEach(n => n.classList.remove('sel'));
+      wrap.classList.add('sel');
+      openFile(rel, it.name);
+    };
+  }
+  return wrap;
+}
+
+function makeNode(it, parentRel) {
+  const rel = parentRel ? parentRel + '/' + it.name : it.name;
+  const wrap = document.createElement('div');
+  wrap.className = 'tnode' + (it.dir ? ' tdir' : '');
+  wrap.dataset.rel = rel;
+  wrap.dataset.dir = it.dir ? '1' : '0';
+  wrap.dataset.name = it.name;
+  const row = document.createElement('div');
+  row.className = 'tnode-row';
+  const arrow = document.createElement('span');
+  arrow.className = 'tarrow';
+  if (it.dir) {
+    arrow.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 L10 8 L6 12"/></svg>';
+  }
+  const icon = document.createElement('span');
+  icon.className = 'ticon';
+  icon.textContent = it.dir ? '📁' : '📄';
+  const name = document.createElement('span');
+  name.className = 'tname';
+  name.textContent = it.name;
+  row.appendChild(arrow);
+  row.appendChild(icon);
+  row.appendChild(name);
+  if (!it.dir) {
+    const sz = document.createElement('span');
+    sz.className = 'tsize';
+    sz.textContent = fmtSize(it.size);
+    row.appendChild(sz);
+  }
+  row.style.paddingLeft = (parentRel ? (parentRel.split('/').length) * 14 : 0) + 8 + 'px';
+  wrap.appendChild(row);
+
+  if (it.dir) {
+    const childBox = document.createElement('div');
+    childBox.style.display = expandedDirs[rel] ? 'block' : 'none';
+    if (expandedDirs[rel]) arrow.classList.add('open');
+    wrap.appendChild(childBox);
+    wrap.onclick = async (ev) => {
+      if (!ev.target.closest('.tnode-row') && ev.target !== wrap) return;
+      ev.stopPropagation();
+      const isOpen = childBox.style.display !== 'none';
+      childBox.style.display = isOpen ? 'none' : 'block';
+      arrow.classList.toggle('open', !isOpen);
+      if (!isOpen) {
+        try {
+          const kids = await listDir(rel);
+          childBox.innerHTML = '';
+          kids.forEach((k) => childBox.appendChild(makeNode(k, rel)));
+          if (!kids.length) {
+            const e = document.createElement('div');
+            e.className = 'tempty';
+            e.textContent = '（空文件夹）';
+            childBox.appendChild(e);
+          }
+        } catch (err) {
+          const e = document.createElement('div');
+          e.className = 'tempty';
+          e.textContent = '打开失败：' + escHtml(err.message);
+          childBox.appendChild(e);
+        }
+      }
+    };
+  } else {
+    wrap.onclick = async (ev) => {
+      if (!ev.target.closest('.tnode-row')) return;
       ev.stopPropagation();
       document.querySelectorAll('#tree .tnode.sel').forEach(n => n.classList.remove('sel'));
       wrap.classList.add('sel');
@@ -370,8 +448,14 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-$('btnNewFile').onclick = () => promptNewFile('');
-$('btnNewDir').onclick = () => promptNewDir('');
+$('btnOpenFile').onclick = async () => {
+  const r = await window.dsh.fsPickFile();
+  if (r.ok) loadTree();
+};
+$('btnOpenFolder').onclick = async () => {
+  const r = await window.dsh.fsPickFolder();
+  if (r.ok) loadTree();
+};
 
 // ================= 右键菜单：新建/删除 =================
 let ctxTarget = null; // { rel, dir }
@@ -414,9 +498,17 @@ document.addEventListener('contextmenu', (e) => {
   const isDir = node.dataset.dir === '1';
   const rel = node.dataset.rel;
   const name = node.dataset.name || '';
+  const isRoot = node.classList.contains('text-root');
   const parentRel = isDir ? rel : (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
   ctxTarget = parentRel ? { rel: parentRel, dir: true } : null;
   const items = [];
+  if (isRoot) {
+    items.push({
+      icon: '➖', label: '从资源管理器移除', danger: true,
+      action: () => removeRoot(rel),
+    });
+    items.push({ sep: true });
+  }
   if (isDir) {
     items.push({ icon: '📂', label: '打开文件夹', action: () => revealPath(rel) });
   } else {
@@ -451,6 +543,13 @@ document.addEventListener('contextmenu', (e) => {
 async function revealPath(rel) {
   const r = await window.dsh.fsReveal(rel);
   if (!r.ok) alert('打开失败：' + r.error);
+}
+
+async function removeRoot(rel) {
+  if (!confirm('将「' + rel + '」从资源管理器中移除？（不会删除磁盘上的文件）')) return;
+  const r = await window.dsh.fsRemoveRoot(rel);
+  if (!r.ok) { alert('移除失败：' + r.error); return; }
+  loadTree();
 }
 
 // 节点行内右键（与空白区分：确保命中节点）
