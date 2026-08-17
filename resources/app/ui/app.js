@@ -155,6 +155,216 @@ $('pBalanceBtn').onclick = async () => {
   setTimeout(() => { btn.disabled = false; btn.textContent = '查询余额'; }, 2000);
 };
 
+// ================= 选项卡：对话 / 文件 =================
+$('tabChat').onclick = () => switchView('chat');
+$('tabFiles').onclick = () => switchView('files');
+
+function switchView(v) {
+  document.body.classList.toggle('view-files', v === 'files');
+  $('tabChat').classList.toggle('active', v === 'chat');
+  $('tabFiles').classList.toggle('active', v === 'files');
+  if (v === 'files') loadTree();
+}
+
+// ================= 文件树 =================
+let treeCache = {};   // dirRel -> {loaded:bool}
+let expandedDirs = {};
+let currentFile = null;   // { rel, name }
+let dirty = false;
+
+function fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function listDir(rel) {
+  const r = await window.dsh.fsList(rel);
+  if (!r.ok) throw new Error(r.error);
+  return r.items;
+}
+
+async function loadTree() {
+  const tree = $('tree');
+  try {
+    const items = await listDir('');
+    tree.innerHTML = '';
+    items.forEach((it) => tree.appendChild(makeNode(it, '')));
+    if (!items.length) tree.innerHTML = '<div class="tempty">工作区为空</div>';
+  } catch (e) {
+    tree.innerHTML = '<div class="tempty">加载失败：' + escHtml(e.message) + '</div>';
+  }
+}
+
+function makeNode(it, parentRel) {
+  const rel = parentRel ? parentRel + '/' + it.name : it.name;
+  const wrap = document.createElement('div');
+  wrap.className = 'tnode' + (it.dir ? ' tdir' : '');
+  const arrow = document.createElement('span');
+  arrow.className = 'tarrow';
+  arrow.textContent = it.dir ? (expandedDirs[rel] ? '▼' : '▶') : '';
+  const icon = document.createElement('span');
+  icon.className = 'ticon';
+  icon.textContent = it.dir ? '📁' : '📄';
+  const name = document.createElement('span');
+  name.className = 'tname';
+  name.textContent = it.name;
+  wrap.appendChild(arrow);
+  wrap.appendChild(icon);
+  wrap.appendChild(name);
+  if (!it.dir) {
+    const sz = document.createElement('span');
+    sz.className = 'tsize';
+    sz.textContent = fmtSize(it.size);
+    wrap.appendChild(sz);
+  }
+  wrap.style.paddingLeft = (parentRel ? (parentRel.split('/').length) * 16 : 0) + 8 + 'px';
+
+  if (it.dir) {
+    const childBox = document.createElement('div');
+    childBox.style.display = expandedDirs[rel] ? 'block' : 'none';
+    wrap.appendChild(childBox);
+    wrap.onclick = async (ev) => {
+      ev.stopPropagation();
+      const isOpen = childBox.style.display !== 'none';
+      childBox.style.display = isOpen ? 'none' : 'block';
+      arrow.textContent = isOpen ? '▶' : '▼';
+      if (!isOpen) {
+        try {
+          const kids = await listDir(rel);
+          childBox.innerHTML = '';
+          kids.forEach((k) => childBox.appendChild(makeNode(k, rel)));
+          if (!kids.length) {
+            const e = document.createElement('div');
+            e.className = 'tempty';
+            e.textContent = '（空文件夹）';
+            childBox.appendChild(e);
+          }
+        } catch (err) {
+          const e = document.createElement('div');
+          e.className = 'tempty';
+          e.textContent = '打开失败：' + escHtml(err.message);
+          childBox.appendChild(e);
+        }
+      }
+    };
+  } else {
+    wrap.onclick = async (ev) => {
+      ev.stopPropagation();
+      document.querySelectorAll('#tree .tnode.sel').forEach(n => n.classList.remove('sel'));
+      wrap.classList.add('sel');
+      openFile(rel, it.name);
+    };
+  }
+  return wrap;
+}
+
+// ================= 编辑器 =================
+// 自维护撤销/重做历史栈（比 execCommand 可靠）
+let history = [];
+let historyIdx = -1;
+let suppressHistory = false;
+
+function snapshot() {
+  history = history.slice(0, historyIdx + 1);
+  history.push($('editor').value);
+  if (history.length > 100) history.shift();
+  historyIdx = history.length - 1;
+}
+
+async function openFile(rel, name) {
+  const r = await window.dsh.fsRead(rel);
+  if (!r.ok) {
+    $('editor').value = '';
+    $('contentName').textContent = '打开失败';
+    $('editorPath').textContent = rel;
+    $('editorDirty').textContent = r.error;
+    return;
+  }
+  currentFile = { rel, name };
+  dirty = false;
+  history = [r.content];
+  historyIdx = 0;
+  $('editor').value = r.content;
+  $('contentName').textContent = name;
+  $('editorPath').textContent = rel;
+  $('editorDirty').textContent = '';
+  $('editor').focus();
+}
+
+function markDirty() {
+  if (!currentFile) return;
+  dirty = true;
+  $('editorDirty').textContent = '● 未保存';
+  $('editorDirty').className = 'dirty';
+}
+
+$('editor').addEventListener('input', () => {
+  markDirty();
+  if (!suppressHistory) snapshot();
+});
+
+function applyHistory() {
+  suppressHistory = true;
+  $('editor').value = history[historyIdx];
+  suppressHistory = false;
+  markDirty();
+  $('editor').focus();
+}
+
+$('btnUndo').onclick = () => {
+  if (historyIdx > 0) { historyIdx--; applyHistory(); }
+};
+$('btnRedo').onclick = () => {
+  if (historyIdx < history.length - 1) { historyIdx++; applyHistory(); }
+};
+
+$('btnSave').onclick = async () => {
+  if (!currentFile) return;
+  const btn = $('btnSave');
+  btn.disabled = true;
+  const r = await window.dsh.fsWrite(currentFile.rel, $('editor').value);
+  btn.disabled = false;
+  if (r.ok) {
+    dirty = false;
+    $('editorDirty').textContent = '已保存 ' + new Date().toLocaleTimeString();
+    $('editorDirty').className = '';
+    loadTree(); // 刷新树（大小变化）
+  } else {
+    $('editorDirty').textContent = '保存失败：' + r.error;
+    $('editorDirty').className = 'dirty';
+  }
+};
+
+// 撤销 / 重做（自维护历史栈）
+$('btnUndo').onclick = () => {
+  if (historyIdx > 0) { historyIdx--; applyHistory(); }
+};
+$('btnRedo').onclick = () => {
+  if (historyIdx < history.length - 1) { historyIdx++; applyHistory(); }
+};
+
+document.addEventListener('keydown', (e) => {
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && e.key.toLowerCase() === 's' && currentFile) {
+    e.preventDefault();
+    $('btnSave').click();
+  }
+  if (ctrl && e.key.toLowerCase() === 'z') {
+    if (document.activeElement === $('editor')) { e.preventDefault(); $('btnUndo').click(); }
+  }
+  if (ctrl && e.key.toLowerCase() === 'y') {
+    if (document.activeElement === $('editor')) { e.preventDefault(); $('btnRedo').click(); }
+  }
+});
+
+$('treeRefresh').onclick = () => loadTree();
+
 // 主进程启动服务后页面就绪
 window.dsh.isMaximized().then(() => { }).catch(() => { });
 start();

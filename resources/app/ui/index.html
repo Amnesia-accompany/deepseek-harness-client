@@ -55,10 +55,63 @@
     #panel .bal-line { font-size: 13px; color: #3c4452; line-height: 1.7; }
     #panel .bal-line .amt { font-size: 17px; font-weight: 700; color: #1a2233; }
     #panel .bal-line .small { font-size: 11.5px; color: #97a0b0; }
-    #stage { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+    #stage { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
       background: #fff; opacity: 0; transition: opacity 0.35s ease; }
     #stage.show { opacity: 1; }
     #stage iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    /* ---------- 选项卡栏 ---------- */
+    #tabbar { position: fixed; top: 40px; left: 0; right: 0; height: 38px;
+      background: #f5f6f8; border-bottom: 1px solid #e4e7ec; display: flex;
+      align-items: flex-end; padding: 0 10px; z-index: 9990; -webkit-app-region: no-drag; }
+    #tabbar .tab { border: 0; background: transparent; padding: 0 18px;
+      height: 34px; font-size: 12.5px; color: #6b7280; cursor: pointer;
+      border-bottom: 2px solid transparent; font-family: inherit; }
+    #tabbar .tab:hover { color: #374151; }
+    #tabbar .tab.active { color: #1f6fd6; border-bottom-color: #1f6fd6; font-weight: 600; }
+
+    /* ---------- 三栏主体 ---------- */
+    #main { position: fixed; top: 78px; left: 0; right: 0; bottom: 0;
+      display: flex; -webkit-app-region: no-drag; }
+    #tree-pane { width: 250px; min-width: 160px; background: #fafbfc;
+      border-right: 1px solid #e4e7ec; display: flex; flex-direction: column; }
+    #content-pane { flex: 1 1 42%; min-width: 260px; display: none;
+      flex-direction: column; border-right: 1px solid #e4e7ec; background: #fff; }
+    #right-pane { flex: 1 1 58%; position: relative; background: #fff; }
+    body.view-files #content-pane { display: flex; }
+    .pane-head { height: 36px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 10px; font-size: 11.5px; color: #8a94a6; font-weight: 700;
+      letter-spacing: 0.5px; border-bottom: 1px solid #eef1f5; background: #fafbfc; }
+    .pane-head .act { display: flex; gap: 4px; }
+    .pane-head button { border: 0; background: #eef1f5; border-radius: 6px;
+      padding: 3px 9px; font-size: 11px; color: #4b5563; cursor: pointer; font-family: inherit; }
+    .pane-head button:hover { background: #e2e7ee; }
+    .pane-head button.primary { background: #1f6fd6; color: #fff; }
+    .pane-head button.primary:hover { background: #2a7ee8; }
+
+    /* ---------- 文件树 ---------- */
+    #tree { flex: 1; overflow: auto; padding: 6px 0; font-size: 12.5px; user-select: none; }
+    #tree .tnode { display: flex; align-items: center; padding: 3px 8px 3px 0;
+      white-space: nowrap; cursor: pointer; color: #374151; }
+    #tree .tnode:hover { background: #eef1f6; }
+    #tree .tnode.sel { background: #e3ebf7; color: #1a3c66; }
+    #tree .tarrow { width: 18px; text-align: center; color: #9aa4b4; font-size: 10px;
+      flex: none; }
+    #tree .ticon { width: 20px; text-align: center; flex: none; }
+    #tree .tname { overflow: hidden; text-overflow: ellipsis; }
+    #tree .tsize { margin-left: 6px; color: #b0b8c4; font-size: 11px; flex: none; }
+    #tree .tempty { color: #9aa4b4; padding: 10px 14px; font-size: 12px; }
+
+    /* ---------- 编辑器 ---------- */
+    #editor { flex: 1; border: 0; outline: none; resize: none; padding: 12px 14px;
+      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+      font-size: 13px; line-height: 1.6; color: #1f2430; background: #fff;
+      tab-size: 2; }
+    #editor:focus { background: #fff; }
+    #editorBar { font-size: 11px; color: #8a94a6; padding: 4px 10px;
+      border-top: 1px solid #f0f2f6; background: #fafbfc; display: flex;
+      justify-content: space-between; }
+    #editorBar .dirty { color: #d97706; }
 
     /* ---------- 启动页 ---------- */
     #boot { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
@@ -120,6 +173,38 @@
     <div class="spacer"></div>
   </div>
 
+  <!-- 选项卡栏 -->
+  <div id="tabbar">
+    <button class="tab active" data-view="chat" id="tabChat">💬 对话</button>
+    <button class="tab" data-view="files" id="tabFiles">📁 文件</button>
+  </div>
+
+  <!-- 三栏主体：左=文件树 中=文件内容 右=对话 -->
+  <div id="main">
+    <div id="tree-pane">
+      <div class="pane-head">
+        <span>资源管理器</span>
+        <span class="act"><button id="treeRefresh">刷新</button></span>
+      </div>
+      <div id="tree"><div class="tempty">加载中…</div></div>
+    </div>
+    <div id="content-pane">
+      <div class="pane-head">
+        <span id="contentName">未打开文件</span>
+        <span class="act">
+          <button id="btnUndo" title="撤销 (Ctrl+Z)">↩ 撤销</button>
+          <button id="btnRedo" title="重做 (Ctrl+Y)">↪ 重做</button>
+          <button id="btnSave" class="primary" title="保存 (Ctrl+S)">保存</button>
+        </span>
+      </div>
+      <textarea id="editor" spellcheck="false" placeholder="在左侧文件树中选择一个文本文件，或点击「+ 新建」创建文件"></textarea>
+      <div id="editorBar"><span id="editorPath"></span><span id="editorDirty"></span></div>
+    </div>
+    <div id="right-pane">
+      <div id="stage"><iframe id="host"></iframe></div>
+    </div>
+  </div>
+
   <!-- API Key / 余额面板 -->
   <div id="panel">
     <div class="phead">账户 <span class="sub">API Key 与 DeepSeek 余额</span></div>
@@ -138,8 +223,6 @@
       <div style="margin-top:8px;"><button class="mini-btn" id="pBalanceBtn">查询余额</button></div>
     </div>
   </div>
-
-  <div id="stage"><iframe id="host"></iframe></div>
 
   <div id="boot">
     <div class="boot-inner">

@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('dsh', {
   submitKey: (key) => ipcRenderer.invoke('app:submit-key', key),
   keyInfo: () => ipcRenderer.invoke('app:key-info'),
   checkBalance: () => ipcRenderer.invoke('app:check-balance'),
+  fsRoot: () => ipcRenderer.invoke('fs:root'),
+  fsList: (rel) => ipcRenderer.invoke('fs:list', rel),
+  fsRead: (rel) => ipcRenderer.invoke('fs:read', rel),
+  fsWrite: (rel, content) => ipcRenderer.invoke('fs:write', rel, content),
   logTail: () => ipcRenderer.invoke('app:log-tail'),
   log: (msg) => ipcRenderer.send('app:log', msg),
 });

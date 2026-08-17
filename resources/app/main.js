@@ -370,6 +370,73 @@ function initIpc() {
 
   ipcMain.handle('app:log-tail', () => logTail());
   ipcMain.on('app:log', (e, msg) => logLine('[ui] ' + msg));
+
+  // ---------------- 文件浏览器（限定工作区，防路径穿越） ----------------
+  const WORKSPACE_REAL = path.resolve(WORKSPACE);
+
+  function safeResolve(rel) {
+    // 入参允许绝对路径或相对路径，最终必须落在工作区内
+    let target;
+    try {
+      target = path.resolve(WORKSPACE_REAL, rel || '.');
+    } catch (e) { return null; }
+    if (target !== WORKSPACE_REAL && !target.startsWith(WORKSPACE_REAL + path.sep)) return null;
+    return target;
+  }
+
+  ipcMain.handle('fs:root', () => WORKSPACE_REAL);
+
+  ipcMain.handle('fs:list', async (e, rel) => {
+    try {
+      const dir = safeResolve(rel);
+      if (!dir) return { ok: false, error: '路径越界' };
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      const items = entries
+        .filter((d) => d.name !== 'node_modules' && d.name !== '.git' && d.name !== '.dsh' && !d.name.startsWith('.DS_Store'))
+        .map((d) => {
+          const full = path.join(dir, d.name);
+          let size = 0;
+          let isDir = d.isDirectory();
+          if (!isDir) { try { size = fs.statSync(full).size; } catch (e) { } }
+          return { name: d.name, dir: isDir, size };
+        })
+        .sort((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name) : (a.dir ? -1 : 1)));
+      return { ok: true, items, root: WORKSPACE_REAL };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  ipcMain.handle('fs:read', async (e, rel) => {
+    try {
+      const file = safeResolve(rel);
+      if (!file) return { ok: false, error: '路径越界' };
+      const stat = fs.statSync(file);
+      if (!stat.isFile()) return { ok: false, error: '不是文件' };
+      if (stat.size > 2 * 1024 * 1024) return { ok: false, error: '文件超过 2MB，请用其他工具打开' };
+      const buf = fs.readFileSync(file);
+      // 二进制检测：前 8KB 含 NUL 字节视为二进制
+      const probe = buf.slice(0, 8192);
+      if (probe.indexOf(0) >= 0) return { ok: false, error: '二进制文件，无法预览' };
+      return { ok: true, content: stripBom(buf.toString('utf8')), name: path.basename(file) };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  ipcMain.handle('fs:write', async (e, rel, content) => {
+    try {
+      const file = safeResolve(rel);
+      if (!file) return { ok: false, error: '路径越界' };
+      if (typeof content !== 'string' || content.length > 4 * 1024 * 1024) {
+        return { ok: false, error: '内容不合法或过大' };
+      }
+      fs.writeFileSync(file, content, 'utf8');
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
 }
 
 // ---------------- 启动 ----------------
