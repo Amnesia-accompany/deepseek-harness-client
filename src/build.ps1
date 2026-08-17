@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 #  蓝色大肥鱼 DSH 懒人客户端 - 构建脚本
 #  生成：蓝色大肥鱼DSH.exe（Electron 桌面端）+ launcher.exe
 #       + 蓝色大肥鱼DSH-安装程序.exe（自包含，嵌入全部文件）
@@ -69,6 +69,68 @@ $g3.DrawEllipse($pen3, 4, 4, 248, 248)
 $logoBmp.Save($logoOut, [System.Drawing.Imaging.ImageFormat]::Png)
 $pen3.Dispose(); $path3.Dispose(); $g3.Dispose(); $logoBmp.Dispose(); $img.Dispose()
 Write-Host "    圆形 Logo：$logoOut"
+
+# ---- 微型功能图标（安装界面用，32x32 PNG） ----
+function New-IconPng {
+    param([string]$Path, [scriptblock]$Draw)
+    $b = New-Object System.Drawing.Bitmap 32, 32
+    $g = [System.Drawing.Graphics]::FromImage($b)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([System.Drawing.Color]::Transparent)
+    & $Draw $g
+    $b.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    $g.Dispose(); $b.Dispose()
+}
+# 桌面图标（显示器）
+New-IconPng (Join-Path $buildDir 'icon-desktop.png') {
+    param($g)
+    $blue = [System.Drawing.Color]::FromArgb(46, 124, 246)
+    $pen = New-Object System.Drawing.Pen($blue, 2.4)
+    $g.DrawRectangle($pen, 5, 6, 22, 15)
+    $g.DrawLine($pen, 12, 25, 20, 25)
+    $g.DrawLine($pen, 16, 21, 16, 25)
+    $g.DrawLine($pen, 8, 25, 24, 25)
+    $pen.Dispose()
+}
+# 火箭图标
+New-IconPng (Join-Path $buildDir 'icon-rocket.png') {
+    param($g)
+    $blue = [System.Drawing.Color]::FromArgb(46, 124, 246)
+    $sb = New-Object System.Drawing.SolidBrush($blue)
+    $pts = @(
+        (New-Object System.Drawing.Point(16, 3)),
+        (New-Object System.Drawing.Point(22, 10)),
+        (New-Object System.Drawing.Point(22, 16)),
+        (New-Object System.Drawing.Point(10, 16)),
+        (New-Object System.Drawing.Point(10, 10))
+    )
+    $g.FillPolygon($sb, $pts)
+    $g.FillEllipse($sb, 13, 8, 6, 6)
+    $sb2 = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 170, 60))
+    $g.FillEllipse($sb2, 15, 22, 2, 3)
+    $g.FillEllipse($sb2, 11, 24, 2, 3)
+    $g.FillEllipse($sb2, 19, 24, 2, 3)
+    $sb.Dispose(); $sb2.Dispose()
+}
+# Node.js 图标（绿色六边形）
+New-IconPng (Join-Path $buildDir 'icon-node.png') {
+    param($g)
+    $green = [System.Drawing.Color]::FromArgb(60, 165, 92)
+    $sb = New-Object System.Drawing.SolidBrush($green)
+    $pts = @(
+        (New-Object System.Drawing.Point(16, 2)),
+        (New-Object System.Drawing.Point(27, 9)),
+        (New-Object System.Drawing.Point(27, 23)),
+        (New-Object System.Drawing.Point(16, 30)),
+        (New-Object System.Drawing.Point(5, 23)),
+        (New-Object System.Drawing.Point(5, 9))
+    )
+    $g.FillPolygon($sb, $pts)
+    $sb2 = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+    $g.DrawString('JS', (New-Object System.Drawing.Font('Arial', 9, [System.Drawing.FontStyle]::Bold)), $sb2, 8, 10)
+    $sb.Dispose(); $sb2.Dispose()
+}
+Write-Host "    微型图标：icon-desktop / icon-rocket / icon-node"
 
 Write-Host '==> 2/5 同步 Electron 桌面端到发行根'
 # 复制 electron 素材（排除 resources，单独同步）
@@ -189,7 +251,7 @@ $refs3 = @(
     '/r:Microsoft.CSharp.dll'
 )
 $outExe = 'D:\DeepSeek Harness\deepseek-harness-client.exe'
-& $csc /nologo /target:winexe /optimize+ "/win32icon:$iconOut" "/win32manifest:$srcDir\app.manifest" $refs3 "/resource:$payload,DSHPayload.zip" "/resource:$buildDir\logo.png,DSHLogo.png" "/out:$outExe" "$srcDir\Installer.cs" "$srcDir\InstallerUI.cs"
+& $csc /nologo /target:winexe /optimize+ "/win32icon:$iconOut" "/win32manifest:$srcDir\app.manifest" $refs3 "/resource:$payload,DSHPayload.zip" "/resource:$buildDir\logo.png,DSHLogo.png" "/resource:$buildDir\icon-desktop.png,DSHIconDesktop.png" "/resource:$buildDir\icon-rocket.png,DSHIconRocket.png" "/resource:$buildDir\icon-node.png,DSHIconNode.png" "/out:$outExe" "$srcDir\Installer.cs" "$srcDir\InstallerUI.cs"
 if ($LASTEXITCODE -ne 0) { throw '安装程序编译失败' }
 # 安装器也补上版本信息（否则右键属性显示 0.0.0.0）
 & $rcedit $outExe `
