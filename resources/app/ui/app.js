@@ -196,13 +196,12 @@ async function loadTree() {
   const tree = $('tree');
   try {
     const roots = await window.dsh.fsRoots();
-    window.__workspaceHidden = !roots.some((r) => r.rel === '');
     tree.innerHTML = '';
     for (const r of roots) {
       tree.appendChild(makeRootNode(r));
     }
     if (!roots.length) {
-      tree.innerHTML = '<div class="tempty">资源管理器为空<br>（右键可新建文件/文件夹，或恢复默认工作区）</div>';
+      tree.innerHTML = '<div class="tempty">资源管理器为空<br>（点击右上角 📂 添加文件夹，或 📄 添加文件）</div>';
     }
   } catch (e) {
     tree.innerHTML = '<div class="tempty">加载失败：' + escHtml(e.message) + '</div>';
@@ -210,11 +209,11 @@ async function loadTree() {
 }
 
 function makeRootNode(root) {
-  // 外部根：绝对路径作 rel；工作区根：'' 
+  // 外部根：绝对路径作 rel
   const it = { name: root.name, dir: root.dir, size: 0, external: root.ext };
   const rel = root.rel || '';
   const wrap = document.createElement('div');
-  wrap.className = 'tnode tdir' + (root.ext ? ' text-root' : ' ws-root');
+  wrap.className = 'tnode tdir text-root';
   wrap.dataset.rel = rel;
   wrap.dataset.dir = '1';
   wrap.dataset.name = it.name;
@@ -502,18 +501,10 @@ document.addEventListener('contextmenu', (e) => {
   const rel = node.dataset.rel;
   const name = node.dataset.name || '';
   const isExtRoot = node.classList.contains('text-root');
-  const isWsRoot = node.classList.contains('ws-root');
   const parentRel = isDir ? rel : (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
   ctxTarget = parentRel ? { rel: parentRel, dir: true } : null;
   const items = [];
-  if (isWsRoot) {
-    // 默认工作区根：可从资源管理器移除（仅隐藏，不删磁盘）
-    items.push({
-      icon: '➖', label: '从资源管理器移除', danger: true,
-      action: () => hideWorkspace(),
-    });
-    items.push({ sep: true });
-  } else if (isExtRoot) {
+  if (isExtRoot) {
     items.push({
       icon: '➖', label: '从资源管理器移除', danger: true,
       action: () => removeRoot(rel),
@@ -529,17 +520,15 @@ document.addEventListener('contextmenu', (e) => {
     { icon: '📄', label: '新建文件', action: () => promptNewFile(parentRel || '') },
     { icon: '📁', label: '新建文件夹', action: () => promptNewDir(parentRel || '') },
   );
-  if (!isWsRoot) {
-    items.push({ sep: true });
-    items.push({
-      icon: '🗑', label: isDir ? '删除文件夹' : '删除文件', danger: true,
-      action: () => confirmDelete(rel, isDir),
-    });
-  }
+  items.push({ sep: true });
+  items.push({
+    icon: '🗑', label: isDir ? '删除文件夹' : '删除文件', danger: true,
+    action: () => confirmDelete(rel, isDir),
+  });
   showCtx(e.clientX, e.clientY, items);
 });
 
-// 树空白处右键：新建 / 刷新 / 恢复工作区
+// 树空白处右键：新建 / 刷新
 document.addEventListener('contextmenu', (e) => {
   if (!e.target.closest || !e.target.closest('#tree')) return;
   if (e.target.closest('.tnode')) return; // 节点右键已处理
@@ -550,9 +539,6 @@ document.addEventListener('contextmenu', (e) => {
     { icon: '📁', label: '新建文件夹', action: () => promptNewDir('') },
     { icon: '🔄', label: '刷新', action: () => loadTree() },
   ];
-  if (window.__workspaceHidden) {
-    items.push({ icon: '⭐', label: '重新显示默认工作区', action: () => showWorkspace() });
-  }
   showCtx(e.clientX, e.clientY, items);
 });
 
@@ -565,19 +551,6 @@ async function removeRoot(rel) {
   if (!confirm('将「' + rel + '」从资源管理器中移除？（不会删除磁盘上的文件）')) return;
   const r = await window.dsh.fsRemoveRoot(rel);
   if (!r.ok) { alert('移除失败：' + r.error); return; }
-  loadTree();
-}
-
-async function hideWorkspace() {
-  if (!confirm('将默认工作区（DeepSeek-Harness-Workspace）从资源管理器中移除？\n仅隐藏显示，不会删除磁盘上的任何文件。')) return;
-  const r = await window.dsh.fsHideWorkspace();
-  if (!r.ok) { alert('移除失败：' + r.error); return; }
-  loadTree();
-}
-
-async function showWorkspace() {
-  const r = await window.dsh.fsShowWorkspace();
-  if (!r.ok) { alert('操作失败：' + r.error); return; }
   loadTree();
 }
 

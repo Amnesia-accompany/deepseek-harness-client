@@ -39,8 +39,6 @@ function stripBom(s) { return s.replace(/^\uFEFF/, ''); }
 
 // 外部根目录/文件（用户通过「打开文件夹/打开文件」加入资源管理器）
 let extraRoots = [];
-// 默认工作区根是否隐藏（用户从资源管理器中移除后为 true）
-let workspaceHidden = false;
 
 function readConfig() {
   try {
@@ -50,14 +48,13 @@ function readConfig() {
     if (Array.isArray(cfg.extraRoots)) {
       extraRoots = cfg.extraRoots.filter((r) => typeof r === 'string' && r.length > 0);
     }
-    if (typeof cfg.workspaceHidden === 'boolean') workspaceHidden = cfg.workspaceHidden;
   } catch (e) { /* 默认 3080 */ }
 }
 
 function saveConfig() {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    const cfg = { port, baseURL: baseURL || null, configured: true, extraRoots, workspaceHidden };
+    const cfg = { port, baseURL: baseURL || null, configured: true, extraRoots };
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
   } catch (e) { }
 }
@@ -397,12 +394,9 @@ function initIpc() {
     return null;
   }
 
-  // 所有根（工作区 + 外部根；工作区可被隐藏）
+  // 所有根（仅用户添加的外部根）
   function allRoots() {
     const list = [];
-    if (!workspaceHidden) {
-      list.push({ rel: '', name: path.basename(WORKSPACE_REAL), dir: true, ext: false });
-    }
     for (const r of extraRoots) {
       try {
         const st = fs.statSync(r);
@@ -413,20 +407,6 @@ function initIpc() {
   }
 
   ipcMain.handle('fs:roots', () => allRoots());
-
-  // 从资源管理器中移除默认工作区（仅隐藏显示，不删磁盘）
-  ipcMain.handle('fs:hide-workspace', () => {
-    workspaceHidden = true;
-    saveConfig();
-    return { ok: true, roots: allRoots() };
-  });
-
-  // 重新显示默认工作区
-  ipcMain.handle('fs:show-workspace', () => {
-    workspaceHidden = false;
-    saveConfig();
-    return { ok: true, roots: allRoots() };
-  });
 
   // 打开系统文件夹选择框 → 加入资源管理器
   ipcMain.handle('fs:pick-folder', async () => {

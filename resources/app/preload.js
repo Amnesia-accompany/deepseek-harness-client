@@ -13,8 +13,6 @@ contextBridge.exposeInMainWorld('dsh', {
   checkBalance: () => ipcRenderer.invoke('app:check-balance'),
   fsRoot: () => ipcRenderer.invoke('fs:root'),
   fsRoots: () => ipcRenderer.invoke('fs:roots'),
-  fsHideWorkspace: () => ipcRenderer.invoke('fs:hide-workspace'),
-  fsShowWorkspace: () => ipcRenderer.invoke('fs:show-workspace'),
   fsPickFolder: () => ipcRenderer.invoke('fs:pick-folder'),
   fsPickFile: () => ipcRenderer.invoke('fs:pick-file'),
   fsRemoveRoot: (rel) => ipcRenderer.invoke('fs:remove-root', rel),
