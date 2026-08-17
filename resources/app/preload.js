@@ -23,6 +23,13 @@ contextBridge.exposeInMainWorld('dsh', {
   fsCreateDir: (parentRel, name) => ipcRenderer.invoke('fs:create-dir', parentRel, name),
   fsDelete: (rel) => ipcRenderer.invoke('fs:delete', rel),
   fsReveal: (rel) => ipcRenderer.invoke('fs:reveal', rel),
+  setSkillsList: () => ipcRenderer.invoke('set:skills-list'),
+  setSkillCreate: (name) => ipcRenderer.invoke('set:skill-create', name),
+  setSkillDelete: (name) => ipcRenderer.invoke('set:skill-delete', name),
+  setMcpList: () => ipcRenderer.invoke('set:mcp-list'),
+  setMcpSave: (cfg) => ipcRenderer.invoke('set:mcp-save', cfg),
+  setMcpDelete: (id) => ipcRenderer.invoke('set:mcp-delete', id),
+  setMarketList: (force) => ipcRenderer.invoke('set:market-list', force),
   logTail: () => ipcRenderer.invoke('app:log-tail'),
   log: (msg) => ipcRenderer.send('app:log', msg),
 });
