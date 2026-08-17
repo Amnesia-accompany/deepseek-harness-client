@@ -70,15 +70,16 @@
     #tabbar .tab:hover { color: #374151; }
     #tabbar .tab.active { color: #1f6fd6; border-bottom-color: #1f6fd6; font-weight: 600; }
 
-    /* ---------- 三栏主体 ---------- */
+    /* ---------- 三栏主体（对话模式全屏，文件模式才出现树） ---------- */
     #main { position: fixed; top: 78px; left: 0; right: 0; bottom: 0;
       display: flex; -webkit-app-region: no-drag; }
     #tree-pane { width: 250px; min-width: 160px; background: #fafbfc;
-      border-right: 1px solid #e4e7ec; display: flex; flex-direction: column; }
+      border-right: 1px solid #e4e7ec; display: none; flex-direction: column; }
     #content-pane { flex: 1 1 42%; min-width: 260px; display: none;
       flex-direction: column; border-right: 1px solid #e4e7ec; background: #fff; }
     #right-pane { flex: 1 1 58%; position: relative; background: #fff; }
-    body.view-files #content-pane { display: flex; }
+    body.view-files #tree-pane { display: flex; }
+    body.view-files #content-pane.open { display: flex; }
     .pane-head { height: 36px; display: flex; align-items: center; justify-content: space-between;
       padding: 0 10px; font-size: 11.5px; color: #8a94a6; font-weight: 700;
       letter-spacing: 0.5px; border-bottom: 1px solid #eef1f5; background: #fafbfc; }
@@ -112,6 +113,32 @@
       border-top: 1px solid #f0f2f6; background: #fafbfc; display: flex;
       justify-content: space-between; }
     #editorBar .dirty { color: #d97706; }
+
+    /* ---------- 右键菜单 ---------- */
+    #ctxMenu { position: fixed; z-index: 10000; min-width: 150px;
+      background: #fff; border: 1px solid #e2e6ec; border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(20,30,60,0.16); padding: 5px; display: none; }
+    #ctxMenu.show { display: block; }
+    #ctxMenu .mi { padding: 7px 12px; font-size: 12.5px; color: #374151;
+      border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    #ctxMenu .mi:hover { background: #eef2f8; }
+    #ctxMenu .mi.danger { color: #d64545; }
+    #ctxMenu .mi.danger:hover { background: #fdeeee; }
+    #ctxMenu .sep { height: 1px; background: #eef1f5; margin: 4px 6px; }
+
+    /* ---------- 输入弹窗 ---------- */
+    #promptMask { position: fixed; inset: 0; background: rgba(15,23,42,0.35);
+      z-index: 10001; display: none; align-items: center; justify-content: center; }
+    #promptMask.show { display: flex; }
+    #promptBox { width: 340px; background: #fff; border-radius: 12px;
+      padding: 20px 22px 18px; box-shadow: 0 16px 48px rgba(20,30,60,0.25); }
+    #promptBox .pt { font-size: 14px; font-weight: 700; color: #1a2233; margin-bottom: 6px; }
+    #promptBox .pd { font-size: 11.5px; color: #97a0b0; margin-bottom: 12px; }
+    #promptBox input { width: 100%; padding: 8px 11px; border: 1px solid #dde2ea;
+      border-radius: 7px; font-size: 13px; outline: none; margin-bottom: 14px; }
+    #promptBox input:focus { border-color: #1f6fd6; }
+    #promptBox .btns { display: flex; justify-content: flex-end; gap: 8px; }
+    #promptBox .mini-btn { padding: 7px 16px; font-size: 12.5px; }
 
     /* ---------- 启动页 ---------- */
     #boot { position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
@@ -248,6 +275,21 @@
     <input id="keyInput" type="text" placeholder="sk-..." autocomplete="off" />
     <div class="err" id="keyErr"></div>
     <button class="btn" id="keyOk">确定并启动</button>
+  </div>
+
+  <!-- 右键菜单 -->
+  <div id="ctxMenu"></div>
+  <!-- 输入弹窗 -->
+  <div id="promptMask">
+    <div id="promptBox">
+      <div class="pt" id="promptTitle">新建</div>
+      <div class="pd" id="promptDesc"></div>
+      <input id="promptInput" type="text" placeholder="" autocomplete="off" />
+      <div class="btns">
+        <button class="mini-btn" id="promptCancel">取消</button>
+        <button class="mini-btn blue" id="promptOk">确定</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

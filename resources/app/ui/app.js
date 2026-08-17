@@ -163,7 +163,10 @@ function switchView(v) {
   document.body.classList.toggle('view-files', v === 'files');
   $('tabChat').classList.toggle('active', v === 'chat');
   $('tabFiles').classList.toggle('active', v === 'files');
-  if (v === 'files') loadTree();
+  if (v === 'files') {
+    if (currentFile) $('content-pane').classList.add('open');
+    loadTree();
+  }
 }
 
 // ================= 文件树 =================
@@ -205,6 +208,8 @@ function makeNode(it, parentRel) {
   const rel = parentRel ? parentRel + '/' + it.name : it.name;
   const wrap = document.createElement('div');
   wrap.className = 'tnode' + (it.dir ? ' tdir' : '');
+  wrap.dataset.rel = rel;
+  wrap.dataset.dir = it.dir ? '1' : '0';
   const arrow = document.createElement('span');
   arrow.className = 'tarrow';
   arrow.textContent = it.dir ? (expandedDirs[rel] ? '▼' : '▶') : '';
@@ -294,6 +299,7 @@ async function openFile(rel, name) {
   $('contentName').textContent = name;
   $('editorPath').textContent = rel;
   $('editorDirty').textContent = '';
+  $('content-pane').classList.add('open');
   $('editor').focus();
 }
 
@@ -364,6 +370,130 @@ document.addEventListener('keydown', (e) => {
 });
 
 $('treeRefresh').onclick = () => loadTree();
+
+// ================= 右键菜单：新建/删除 =================
+let ctxTarget = null; // { rel, dir }
+
+function showCtx(x, y, items) {
+  const m = $('ctxMenu');
+  m.innerHTML = '';
+  items.forEach((it) => {
+    if (it.sep) {
+      const s = document.createElement('div');
+      s.className = 'sep';
+      m.appendChild(s);
+      return;
+    }
+    const mi = document.createElement('div');
+    mi.className = 'mi' + (it.danger ? ' danger' : '');
+    mi.innerHTML = '<span>' + escHtml(it.icon || '') + '</span><span>' + escHtml(it.label) + '</span>';
+    mi.onclick = () => { hideCtx(); it.action(); };
+    m.appendChild(mi);
+  });
+  m.style.left = Math.min(x, window.innerWidth - 170) + 'px';
+  m.style.top = Math.min(y, window.innerHeight - items.length * 34 - 20) + 'px';
+  m.classList.add('show');
+}
+
+function hideCtx() {
+  $('ctxMenu').classList.remove('show');
+}
+
+document.addEventListener('click', hideCtx);
+
+// 右键菜单（document 级事件委托：树节点 / 树空白 / 其他区域）
+document.addEventListener('contextmenu', (e) => {
+  const node = e.target.closest ? e.target.closest('.tnode') : null;
+  if (!node) {
+    hideCtx();
+    return;
+  }
+  e.preventDefault();
+  const isDir = node.dataset.dir === '1';
+  const rel = node.dataset.rel;
+  const parentRel = isDir ? rel : (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
+  ctxTarget = parentRel ? { rel: parentRel, dir: true } : null;
+  const items = [
+    { icon: '📄', label: '新建文件', action: () => promptNewFile(parentRel || '') },
+    { icon: '📁', label: '新建文件夹', action: () => promptNewDir(parentRel || '') },
+  ];
+  items.push({ sep: true });
+  items.push({
+    icon: '🗑', label: isDir ? '删除文件夹' : '删除文件', danger: true,
+    action: () => confirmDelete(rel, isDir),
+  });
+  showCtx(e.clientX, e.clientY, items);
+});
+
+// 树空白处右键：新建到根目录
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest || !e.target.closest('#tree')) return;
+  if (e.target.closest('.tnode')) return; // 节点右键已处理
+  e.preventDefault();
+  ctxTarget = null;
+  const items = [
+    { icon: '📄', label: '新建文件', action: () => promptNewFile('') },
+    { icon: '📁', label: '新建文件夹', action: () => promptNewDir('') },
+  ];
+  showCtx(e.clientX, e.clientY, items);
+});
+
+// 节点行内右键（与空白区分：确保命中节点）
+// 节点本身也有 contextmenu —— 用上面的统一处理即可（node 命中）
+
+// 输入弹窗
+function promptInput(title, desc, placeholder, def) {
+  return new Promise((resolve) => {
+    $('promptTitle').textContent = title;
+    $('promptDesc').textContent = desc || '';
+    $('promptInput').value = def || '';
+    $('promptInput').placeholder = placeholder || '';
+    $('promptMask').classList.add('show');
+    $('promptInput').focus();
+    const done = (val) => {
+      $('promptMask').classList.remove('show');
+      resolve(val);
+    };
+    $('promptOk').onclick = () => done($('promptInput').value.trim());
+    $('promptCancel').onclick = () => done(null);
+    $('promptInput').onkeydown = (e) => {
+      if (e.key === 'Enter') done($('promptInput').value.trim());
+      if (e.key === 'Escape') done(null);
+    };
+  });
+}
+
+async function promptNewFile(parentRel) {
+  const name = await promptInput('新建文件', '在 ' + (parentRel || '工作区根目录') + ' 下新建：', '例如 notes.txt');
+  if (!name) return;
+  const r = await window.dsh.fsCreateFile(parentRel, name);
+  if (!r.ok) { alert('新建失败：' + r.error); return; }
+  loadTree();
+  openFile(r.rel, name);
+}
+
+async function promptNewDir(parentRel) {
+  const name = await promptInput('新建文件夹', '在 ' + (parentRel || '工作区根目录') + ' 下新建：', '例如 myfolder');
+  if (!name) return;
+  const r = await window.dsh.fsCreateDir(parentRel, name);
+  if (!r.ok) { alert('新建失败：' + r.error); return; }
+  loadTree();
+}
+
+async function confirmDelete(rel, isDir) {
+  if (!confirm('确定删除「' + rel + '」' + (isDir ? ' 及其全部内容' : '') + ' 吗？此操作不可恢复！')) return;
+  const r = await window.dsh.fsDelete(rel);
+  if (!r.ok) { alert('删除失败：' + r.error); return; }
+  if (currentFile && currentFile.rel === rel) {
+    currentFile = null;
+    $('content-pane').classList.remove('open');
+    $('contentName').textContent = '未打开文件';
+    $('editor').value = '';
+    $('editorPath').textContent = '';
+    $('editorDirty').textContent = '';
+  }
+  loadTree();
+}
 
 // 主进程启动服务后页面就绪
 window.dsh.isMaximized().then(() => { }).catch(() => { });

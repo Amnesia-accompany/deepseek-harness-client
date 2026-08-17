@@ -437,6 +437,54 @@ function initIpc() {
       return { ok: false, error: String(err.message || err) };
     }
   });
+
+  // 新建文件 / 新建文件夹 / 删除（均限定工作区内）
+  ipcMain.handle('fs:create-file', async (e, parentRel, name) => {
+    try {
+      const dir = safeResolve(parentRel || '.');
+      if (!dir) return { ok: false, error: '路径越界' };
+      const clean = String(name || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+      if (!clean) return { ok: false, error: '文件名不合法' };
+      const target = path.join(dir, clean);
+      if (fs.existsSync(target)) return { ok: false, error: '同名文件已存在' };
+      fs.writeFileSync(target, '', 'utf8');
+      return { ok: true, rel: path.relative(WORKSPACE_REAL, target).split(path.sep).join('/') };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  ipcMain.handle('fs:create-dir', async (e, parentRel, name) => {
+    try {
+      const dir = safeResolve(parentRel || '.');
+      if (!dir) return { ok: false, error: '路径越界' };
+      const clean = String(name || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+      if (!clean) return { ok: false, error: '文件夹名不合法' };
+      const target = path.join(dir, clean);
+      if (fs.existsSync(target)) return { ok: false, error: '同名文件夹已存在' };
+      fs.mkdirSync(target, { recursive: false });
+      return { ok: true, rel: path.relative(WORKSPACE_REAL, target).split(path.sep).join('/') };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
+  ipcMain.handle('fs:delete', async (e, rel) => {
+    try {
+      const target = safeResolve(rel);
+      if (!target) return { ok: false, error: '路径越界' };
+      if (target === WORKSPACE_REAL) return { ok: false, error: '不能删除工作区根目录' };
+      const stat = fs.statSync(target);
+      if (stat.isDirectory()) {
+        fs.rmSync(target, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(target);
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
 }
 
 // ---------------- 启动 ----------------
