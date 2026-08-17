@@ -23,12 +23,12 @@ namespace DSHInstaller {
     // ---------- 圆角工具 ----------
     static class Rounded {
         public static GraphicsPath Path(Rectangle r, int radius) {
-            int d = radius * 2;
             GraphicsPath p = new GraphicsPath();
-            if (d >= r.Width || d >= r.Height) {
+            if (radius <= 0 || radius * 2 >= r.Width || radius * 2 >= r.Height) {
                 p.AddRectangle(r);
                 return p;
             }
+            int d = radius * 2;
             p.AddArc(r.X, r.Y, d, d, 180, 90);
             p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
             p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
@@ -56,9 +56,9 @@ namespace DSHInstaller {
         public static Image Logo { get { if (logo == null) logo = Load("DSHLogo.png"); return logo; } }
     }
 
-    // ---------- 圆角按钮（现代扁平：纯色+悬停变亮+按下变深） ----------
+    // ---------- 方形按钮（现代扁平：纯色+悬停变亮+按下变深） ----------
     class RoundedButton : Button {
-        public int Radius = 8;
+        public int Radius = 0;
         public Color HoverColor = Color.Empty;
         bool hovering;
         bool pressed;
@@ -75,15 +75,21 @@ namespace DSHInstaller {
         protected override void OnMouseUp(MouseEventArgs e) { pressed = false; Invalidate(); base.OnMouseUp(e); }
 
         protected override void OnPaint(PaintEventArgs e) {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            // 方形按钮关闭抗锯齿，边缘锐利无晕边；圆角按钮保持抗锯齿
+            e.Graphics.SmoothingMode = (Radius > 0) ? SmoothingMode.AntiAlias : SmoothingMode.None;
+            Rectangle rect = new Rectangle(0, 0, Width, Height);
             Color back = BackColor;
             if (!Enabled) back = Color.FromArgb(185, 195, 205);
             else if (hovering && HoverColor != Color.Empty) back = HoverColor;
             else if (pressed && back.A > 0) back = ControlPaint.Dark(back, 0.10f);
             if (back.A > 0) {
-                using (GraphicsPath p = Rounded.Path(rect, Radius)) {
-                    using (SolidBrush b = new SolidBrush(back)) e.Graphics.FillPath(b, p);
+                if (Radius > 0) {
+                    using (GraphicsPath p = Rounded.Path(rect, Radius)) {
+                        using (SolidBrush b = new SolidBrush(back)) e.Graphics.FillPath(b, p);
+                    }
+                }
+                else {
+                    using (SolidBrush b = new SolidBrush(back)) e.Graphics.FillRectangle(b, rect);
                 }
             }
             TextRenderer.DrawText(e.Graphics, Text, Font, rect,
@@ -357,7 +363,6 @@ namespace DSHInstaller {
             btnClose.BackColor = Color.Transparent;
             btnClose.ForeColor = Color.White;
             btnClose.HoverColor = Color.FromArgb(196, 60, 50);
-            btnClose.Radius = 6;
             btnClose.Font = UiFont(9F, FontStyle.Regular);
             btnClose.Click += delegate { Close(); };
             topBar.Controls.Add(btnClose);
