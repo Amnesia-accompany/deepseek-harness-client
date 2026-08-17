@@ -56,11 +56,12 @@ namespace DSHInstaller {
         public static Image Logo { get { if (logo == null) logo = Load("DSHLogo.png"); return logo; } }
     }
 
-    // ---------- 圆角按钮 ----------
+    // ---------- 圆角按钮（渐变+高光+阴影+按压反馈） ----------
     class RoundedButton : Button {
         public int Radius = 6;
         public Color HoverColor = Color.Empty;
         bool hovering;
+        bool pressed;
 
         public RoundedButton() {
             FlatStyle = FlatStyle.Flat;
@@ -69,19 +70,44 @@ namespace DSHInstaller {
         }
 
         protected override void OnMouseEnter(EventArgs e) { hovering = true; Invalidate(); base.OnMouseEnter(e); }
-        protected override void OnMouseLeave(EventArgs e) { hovering = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseLeave(EventArgs e) { hovering = false; pressed = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { pressed = true; Invalidate(); } base.OnMouseDown(e); }
+        protected override void OnMouseUp(MouseEventArgs e) { pressed = false; Invalidate(); base.OnMouseUp(e); }
 
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
-            Color back = BackColor;
-            if (!Enabled) back = Color.FromArgb(185, 195, 205);
-            else if (hovering && HoverColor != Color.Empty) back = HoverColor;
-            using (GraphicsPath p = Rounded.Path(rect, Radius)) {
-                using (SolidBrush b = new SolidBrush(back)) e.Graphics.FillPath(b, p);
-                if (Enabled) using (Pen bp = new Pen(Color.FromArgb(40, 0, 0, 0), 1)) e.Graphics.DrawPath(bp, p);
+            Rectangle fillRect = pressed ? new Rectangle(0, 1, Width - 1, Height - 1) : rect;
+            Color baseColor = BackColor;
+            if (!Enabled) baseColor = Color.FromArgb(185, 195, 205);
+            else if (hovering && HoverColor != Color.Empty) baseColor = HoverColor;
+            Color darkColor = ControlPaint.Dark(baseColor, 0.18f);
+
+            // 底部阴影（按下时消失）
+            if (!pressed) {
+                using (GraphicsPath sp = Rounded.Path(new Rectangle(1, 2, Width - 2, Height - 1), Radius)) {
+                    using (SolidBrush sb = new SolidBrush(Color.FromArgb(26, 0, 0, 0))) e.Graphics.FillPath(sb, sp);
+                }
             }
-            TextRenderer.DrawText(e.Graphics, Text, Font, rect,
+            // 主体渐变（上浅下深）
+            using (GraphicsPath p = Rounded.Path(fillRect, Radius)) {
+                using (LinearGradientBrush b = new LinearGradientBrush(fillRect, baseColor, darkColor, 90f)) {
+                    e.Graphics.FillPath(b, p);
+                }
+            }
+            // 顶部高光
+            Rectangle topRect = new Rectangle(1, 1, Width - 3, Math.Max(3, (Height - 2) / 2));
+            using (GraphicsPath tp = Rounded.Path(topRect, Math.Max(1, Radius - 1))) {
+                using (LinearGradientBrush tb = new LinearGradientBrush(topRect,
+                    Color.FromArgb(80, 255, 255, 255), Color.FromArgb(10, 255, 255, 255), 90f)) {
+                    e.Graphics.FillPath(tb, tp);
+                }
+            }
+            // 外框
+            using (GraphicsPath p = Rounded.Path(fillRect, Radius)) {
+                using (Pen bp = new Pen(ControlPaint.Dark(baseColor, 0.32f))) e.Graphics.DrawPath(bp, p);
+            }
+            TextRenderer.DrawText(e.Graphics, Text, Font, fillRect,
                 Enabled ? ForeColor : Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
@@ -424,8 +450,8 @@ namespace DSHInstaller {
             sub.Font = UiFont(9F, FontStyle.Regular);
             sub.ForeColor = TextGray;
             sub.AutoSize = false;
-            sub.Size = new Size(CARD_W, 40);
-            sub.Location = new Point(CONTENT_X - 5, 104);
+            sub.Size = new Size(CARD_W, 52);
+            sub.Location = new Point(CONTENT_X - 5, 100);
             sub.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(sub);
 
