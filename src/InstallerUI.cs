@@ -56,9 +56,9 @@ namespace DSHInstaller {
         public static Image Logo { get { if (logo == null) logo = Load("DSHLogo.png"); return logo; } }
     }
 
-    // ---------- 圆角按钮（渐变+高光+阴影+按压反馈） ----------
+    // ---------- 圆角按钮（现代扁平：纯色+悬停变亮+按下变深） ----------
     class RoundedButton : Button {
-        public int Radius = 6;
+        public int Radius = 8;
         public Color HoverColor = Color.Empty;
         bool hovering;
         bool pressed;
@@ -77,37 +77,16 @@ namespace DSHInstaller {
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
-            Rectangle fillRect = pressed ? new Rectangle(0, 1, Width - 1, Height - 1) : rect;
-            Color baseColor = BackColor;
-            if (!Enabled) baseColor = Color.FromArgb(185, 195, 205);
-            else if (hovering && HoverColor != Color.Empty) baseColor = HoverColor;
-            Color darkColor = ControlPaint.Dark(baseColor, 0.18f);
-
-            // 底部阴影（按下时消失）
-            if (!pressed) {
-                using (GraphicsPath sp = Rounded.Path(new Rectangle(1, 2, Width - 2, Height - 1), Radius)) {
-                    using (SolidBrush sb = new SolidBrush(Color.FromArgb(26, 0, 0, 0))) e.Graphics.FillPath(sb, sp);
+            Color back = BackColor;
+            if (!Enabled) back = Color.FromArgb(185, 195, 205);
+            else if (hovering && HoverColor != Color.Empty) back = HoverColor;
+            else if (pressed && back.A > 0) back = ControlPaint.Dark(back, 0.10f);
+            if (back.A > 0) {
+                using (GraphicsPath p = Rounded.Path(rect, Radius)) {
+                    using (SolidBrush b = new SolidBrush(back)) e.Graphics.FillPath(b, p);
                 }
             }
-            // 主体渐变（上浅下深）
-            using (GraphicsPath p = Rounded.Path(fillRect, Radius)) {
-                using (LinearGradientBrush b = new LinearGradientBrush(fillRect, baseColor, darkColor, 90f)) {
-                    e.Graphics.FillPath(b, p);
-                }
-            }
-            // 顶部高光
-            Rectangle topRect = new Rectangle(1, 1, Width - 3, Math.Max(3, (Height - 2) / 2));
-            using (GraphicsPath tp = Rounded.Path(topRect, Math.Max(1, Radius - 1))) {
-                using (LinearGradientBrush tb = new LinearGradientBrush(topRect,
-                    Color.FromArgb(80, 255, 255, 255), Color.FromArgb(10, 255, 255, 255), 90f)) {
-                    e.Graphics.FillPath(tb, tp);
-                }
-            }
-            // 外框
-            using (GraphicsPath p = Rounded.Path(fillRect, Radius)) {
-                using (Pen bp = new Pen(ControlPaint.Dark(baseColor, 0.32f))) e.Graphics.DrawPath(bp, p);
-            }
-            TextRenderer.DrawText(e.Graphics, Text, Font, fillRect,
+            TextRenderer.DrawText(e.Graphics, Text, Font, rect,
                 Enabled ? ForeColor : Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
@@ -375,9 +354,10 @@ namespace DSHInstaller {
             btnClose.Text = "✕";
             btnClose.Size = new Size(34, 28);
             btnClose.Location = new Point(WIN_W - 46, 10);
-            btnClose.BackColor = TopBlue;
+            btnClose.BackColor = Color.Transparent;
             btnClose.ForeColor = Color.White;
-            btnClose.HoverColor = Color.FromArgb(180, 60, 50);
+            btnClose.HoverColor = Color.FromArgb(196, 60, 50);
+            btnClose.Radius = 6;
             btnClose.Font = UiFont(9F, FontStyle.Regular);
             btnClose.Click += delegate { Close(); };
             topBar.Controls.Add(btnClose);
