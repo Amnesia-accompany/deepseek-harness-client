@@ -1,0 +1,34 @@
+{
+  "name": "deepseek-harness-settings-enhancer",
+  "description": "DeepSeek Harness 设置增强：在自带设置中新增 Skills 管理 / MCP 服务器管理 / 插件市场 三个页面",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "skills",
+    "mcp",
+    "marketplace",
+    "settings"
+  ]
+}

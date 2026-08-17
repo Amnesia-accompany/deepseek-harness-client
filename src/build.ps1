@@ -245,8 +245,10 @@ $stage = Join-Path $env:TEMP 'dsh-payload-stage'
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
 Get-ChildItem $root -File | Where-Object { $_.Name -notmatch '^payload\.zip$' -and $_.Name -ne '.gitignore' } | ForEach-Object { Copy-Item -LiteralPath $_.FullName $stage }
-foreach ($sub in @('scripts', 'locales', 'resources')) {
-    Copy-Item -LiteralPath (Join-Path $root $sub) (Join-Path $stage $sub) -Recurse -Force
+foreach ($sub in @('scripts', 'locales', 'resources', 'plugins')) {
+    if (Test-Path (Join-Path $root $sub)) {
+        Copy-Item -LiteralPath (Join-Path $root $sub) (Join-Path $stage $sub) -Recurse -Force
+    }
 }
 # data 只带图标素材，排除运行产生的 config.json / server.log 等
 $stageData = Join-Path $stage 'data'

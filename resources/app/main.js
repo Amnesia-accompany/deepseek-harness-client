@@ -319,8 +319,65 @@ function initIpc() {
     if (!r.ok) return { ok: false, error: r.error, log: logTail() };
     const ready = await waitReady(150000);
     if (!ready) return { ok: false, error: '服务启动超时，请查看日志', log: logTail() };
+    deployPlugins();
     return { ok: true, port, reused: !!r.reused };
   });
+
+  // 部署内置插件到 DSH profiles（幂等：客户端启动后自动加载）
+  function profilePatchFile0() {
+    const pd = path.join(HOME_DIR, 'profiles');
+    try {
+      for (const d of fs.readdirSync(pd)) {
+        const f = path.join(pd, d, 'cordis.patch.yml');
+        if (fs.existsSync(f)) return f;
+      }
+    } catch (e) { }
+    return null;
+  }
+
+  function deployPlugins() {
+    try {
+      const srcDir = path.join(ROOT, 'plugins');
+      if (!fs.existsSync(srcDir)) return;
+      const pd = path.join(HOME_DIR, 'profiles');
+      if (!fs.existsSync(pd)) return; // DSH 尚未建立 profiles，下次启动再部署
+      const nm = path.join(pd, 'node_modules');
+      fs.mkdirSync(nm, { recursive: true });
+      // js-yaml 保底（profiles 缺则从 app 依赖复制）
+      const yamlSrc = path.join(APP_DIR, 'node_modules', 'js-yaml');
+      const yamlDst = path.join(nm, 'js-yaml');
+      if (!fs.existsSync(yamlDst) && fs.existsSync(yamlSrc)) {
+        fs.cpSync(yamlSrc, yamlDst, { recursive: true });
+      }
+      // 插件包
+      for (const name of fs.readdirSync(srcDir)) {
+        const pkgDir = path.join(nm, name);
+        if (fs.existsSync(pkgDir)) continue;
+        fs.cpSync(path.join(srcDir, name), pkgDir, { recursive: true });
+        logLine('[plugins] deployed ' + name);
+      }
+      // patch 条目（js-yaml 操作）
+      const pf = profilePatchFile0();
+      if (pf && YAML) {
+        let data;
+        try { data = YAML.load(stripBom(fs.readFileSync(pf, 'utf8'))); } catch (e) { data = []; }
+        const arr = Array.isArray(data) ? data : [];
+        let changed = false;
+        for (const name of fs.readdirSync(srcDir)) {
+          if (!arr.some((p) => p && p.name === name)) {
+            arr.push({ id: 'builtin-' + name.replace(/[^a-z0-9_-]/gi, '').toLowerCase().slice(0, 20), name });
+            changed = true;
+          }
+        }
+        if (changed) {
+          fs.writeFileSync(pf, YAML.dump(arr, { lineWidth: 120 }), 'utf8');
+          logLine('[plugins] patch updated: ' + pf);
+        }
+      }
+    } catch (e) {
+      logLine('[plugins] deploy error: ' + (e && e.message || e));
+    }
+  }
 
   ipcMain.handle('app:submit-key', async (e, key) => {
     if (!key || !key.trim()) return { ok: false, error: 'Key 不能为空' };
