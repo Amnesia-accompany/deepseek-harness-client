@@ -162,11 +162,11 @@ namespace DSHInstaller {
                 using (SolidBrush b = new SolidBrush(Color.FromArgb(222, 236, 255))) e.Graphics.FillPath(b, p);
             }
             if (marquee) {
-                int fillW = Math.Max(80, Width / 3);
-                int x = marqueeOffset - fillW;
-                if (x > Width) x = marqueeOffset - fillW - 260;
-                using (GraphicsPath p = Rounded.Path(new Rectangle(x, 2, fillW, Height - 5), rad)) {
-                    using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(x, 2, fillW, Height - 5),
+                int mw = Math.Max(80, Width / 3);
+                int x = marqueeOffset - mw;
+                if (x > Width) x = marqueeOffset - mw - 260;
+                using (GraphicsPath p = Rounded.Path(new Rectangle(x, 2, mw, Height - 5), rad)) {
+                    using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(x, 2, mw, Height - 5),
                         Color.FromArgb(120, 180, 255), Color.FromArgb(46, 124, 246), 0f)) {
                         e.Graphics.FillPath(b, p);
                     }
