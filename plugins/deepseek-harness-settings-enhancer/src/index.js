@@ -167,13 +167,25 @@ function profilePatchFile() {
   return null
 }
 
+// 收集顶层与 insert 块内的全部 MCP 行（loader 只应用 insert 块中的新行）
+function collectMcpRows(data) {
+  const out = []
+  const walk = (list) => {
+    for (const p of Array.isArray(list) ? list : []) {
+      if (p && p.name === '@deepseek-ai/dsh-mcp-client') out.push(p)
+      if (p && Array.isArray(p.insert)) walk(p.insert)
+    }
+  }
+  walk(data)
+  return out
+}
+
 function readMcpItems() {
   const pf = profilePatchFile()
   if (!pf || !YAML) return { file: pf, items: [] }
   let data
   try { data = YAML.load(fs.readFileSync(pf, 'utf8').replace(/^\uFEFF/, '')) } catch (e) { return { file: pf, items: [], error: String(e.message || e) } }
-  const arr = Array.isArray(data) ? data : []
-  const items = arr.filter((p) => p && p.name === '@deepseek-ai/dsh-mcp-client').map((p) => ({
+  const items = collectMcpRows(data).map((p) => ({
     id: p.id,
     serverName: (p.config || {}).serverName,
     transport: (p.config || {}).transport,
@@ -189,8 +201,12 @@ function writeMcpItems(items) {
   if (!pf || !YAML) return { ok: false, error: '未找到 DSH 配置或 js-yaml 未安装' }
   let data
   try { data = YAML.load(fs.readFileSync(pf, 'utf8').replace(/^\uFEFF/, '')) } catch (e) { return { ok: false, error: '无法解析现有配置：' + String(e.message || e) } }
+  // 移除旧的 MCP 行（顶层与 insert 块内）
   const arr = (Array.isArray(data) ? data : []).filter((p) => !(p && p.name === '@deepseek-ai/dsh-mcp-client'))
-  for (const m of items) {
+  for (const p of arr) {
+    if (p && Array.isArray(p.insert)) p.insert = p.insert.filter((q) => !(q && q.name === '@deepseek-ai/dsh-mcp-client'))
+  }
+  const rows = items.map((m) => {
     const config = { serverName: m.serverName, transport: m.transport }
     if (m.transport === 'stdio') {
       config.command = m.command
@@ -198,7 +214,13 @@ function writeMcpItems(items) {
     } else {
       config.url = m.url
     }
-    arr.push({ id: m.id, name: '@deepseek-ai/dsh-mcp-client', config })
+    return { id: m.id, name: '@deepseek-ai/dsh-mcp-client', config }
+  })
+  // 写入第一个 insert 块，确保 loader 应用（顶层 override 行会被 loader 按 id 查找并跳过）
+  if (rows.length) {
+    const ins = arr.find((p) => p && Array.isArray(p.insert))
+    if (ins) ins.insert.push(...rows)
+    else arr.push({ insert: rows })
   }
   try {
     fs.writeFileSync(pf, YAML.dump(arr, { lineWidth: 120 }), 'utf8')
@@ -322,27 +344,128 @@ function addPatchItem(arr, item) {
   return out
 }
 
+// ---------- 技能文件系统扫描（web profile 全局层 skill 发现被禁用，直读目录） ----------
+function parseSkillFile(sf, dir) {
+  try {
+    const text = fs.readFileSync(sf, 'utf8')
+    const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+    const meta = {}
+    if (m) {
+      const lines = m[1].split(/\r?\n/)
+      for (let i = 0; i < lines.length; i++) {
+        const kv = lines[i].match(/^(\w+):\s*(.*)$/)
+        if (!kv) continue
+        let val = kv[2].trim()
+        if (val === '>-' || val === '>' || val === '|' || val === '|-') {
+          // 块标量：收集后续缩进行
+          const parts = []
+          while (i + 1 < lines.length && /^\s+/.test(lines[i + 1])) {
+            parts.push(lines[i + 1].trim())
+            i++
+          }
+          val = parts.join(' ')
+        }
+        meta[kv[1]] = val.replace(/^["']|["']$/g, '')
+      }
+    }
+    return { name: meta.name || path.basename(dir), desc: meta.description || '', path: sf }
+  } catch (e) { return null }
+}
+
+function scanSkillFiles() {
+  const out = []
+  // 只扫描用户技能目录（~/.dsh/skills、~/.agents/skills），不展示预设内置技能
+  const roots = [
+    path.join(os.homedir(), '.dsh', 'skills'),
+    path.join(os.homedir(), '.agents', 'skills'),
+  ]
+  const seen = new Set()
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue
+    let entries
+    try { entries = fs.readdirSync(root) } catch (e) { continue }
+    for (const d of entries) {
+      const dir = path.join(root, d)
+      try { if (!fs.statSync(dir).isDirectory()) continue } catch (e) { continue }
+      const sf = path.join(dir, 'SKILL.md')
+      if (!fs.existsSync(sf)) continue
+      const parsed = parseSkillFile(sf, dir)
+      if (!parsed || !parsed.name || seen.has(parsed.name)) continue
+      seen.add(parsed.name)
+      out.push(parsed)
+    }
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name))
+  return out
+}
+
 export const inject = ['webServer']
 
 export function apply(ctx) {
   const webServer = ctx.get('webServer')
   if (webServer === undefined) return
 
-  // Skills 列表（DSH 原生 skills 服务）
+  // Skills 列表（直读用户技能目录，简介自动汉化）
   ctx.effect(() => webServer.register({
     kind: 'exact',
     path: '/api/dshmgr/skills',
     handler: async (req, res) => {
-      const skills = ctx.get('skills')
-      if (skills === undefined) { json(res, { ok: false, error: 'skills 服务不可用' }); return }
       try {
-        const list = await skills.list()
+        const items = scanSkillFiles()
         json(res, {
           ok: true,
-          items: (list || []).map((s) => ({ name: s.name, desc: (s.description || s.title || '').slice(0, 160) })),
+          items: items.map((s) => ({ name: s.name, desc: translateDesc((s.desc || '').slice(0, 220)) })),
         })
       } catch (e) {
         json(res, { ok: false, error: String((e && e.message) || e) })
+      }
+    },
+  }))
+
+  // Skills 详情（读取 SKILL.md 全文，简介汉化）
+  ctx.effect(() => webServer.register({
+    kind: 'exact',
+    path: '/api/dshmgr/skill-get',
+    handler: async (req, res) => {
+      let u
+      try { u = new URL(req.url || '', 'http://localhost') } catch (e) { json(res, { ok: false, error: '请求不合法' }); return }
+      const name = u.searchParams.get('name')
+      if (!name) { json(res, { ok: false, error: '缺少技能名' }); return }
+      const item = scanSkillFiles().find((s) => s.name === name)
+      if (!item) { json(res, { ok: false, error: '未找到技能：' + name }); return }
+      try {
+        const content = fs.readFileSync(item.path, 'utf8')
+        json(res, { ok: true, item: { name: item.name, desc: translateDesc(item.desc), path: item.path, content } })
+      } catch (e) {
+        json(res, { ok: false, error: String((e && e.message) || e) })
+      }
+    },
+  }))
+
+  // Skills 删除（仅限用户技能目录内）
+  ctx.effect(() => webServer.register({
+    kind: 'exact',
+    path: '/api/dshmgr/skill-delete',
+    handler: async (req, res) => {
+      const body = await readBody(req)
+      let payload
+      try { payload = JSON.parse(body) } catch (e) { json(res, { ok: false, error: '请求体不合法' }); return }
+      const name = payload && payload.name ? String(payload.name).trim() : ''
+      if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) { json(res, { ok: false, error: '技能名不合法' }); return }
+      const item = scanSkillFiles().find((s) => s.name === name)
+      if (!item) { json(res, { ok: false, error: '未找到技能：' + name }); return }
+      const resolved = path.resolve(item.path)
+      const roots = [
+        path.join(os.homedir(), '.dsh', 'skills'),
+        path.join(os.homedir(), '.agents', 'skills'),
+      ]
+      const inside = roots.some((r) => resolved === r || resolved.startsWith(r + path.sep))
+      if (!inside) { json(res, { ok: false, error: '只能删除用户技能目录中的技能' }); return }
+      try {
+        fs.rmSync(path.dirname(resolved), { recursive: true, force: true })
+        json(res, { ok: true })
+      } catch (e) {
+        json(res, { ok: false, error: '删除失败：' + String((e && e.message) || e) })
       }
     },
   }))

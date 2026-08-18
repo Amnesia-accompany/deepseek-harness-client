@@ -295,7 +295,7 @@ if (Test-Path $zipStage) { Remove-Item $zipStage -Recurse -Force }
 $zipInner = Join-Path $zipStage 'DeepSeek Harness'
 New-Item -ItemType Directory -Force -Path $zipInner | Out-Null
 Get-ChildItem $root -File | Where-Object { $_.Name -notmatch '^payload\.zip$' -and $_.Name -ne '.gitignore' } | ForEach-Object { Copy-Item -LiteralPath $_.FullName $zipInner }
-foreach ($sub in @('scripts', 'locales', 'resources')) {
+foreach ($sub in @('scripts', 'locales', 'resources', 'plugins')) {
     Copy-Item -LiteralPath (Join-Path $root $sub) (Join-Path $zipInner $sub) -Recurse -Force
 }
 $zipData = Join-Path $zipInner 'data'

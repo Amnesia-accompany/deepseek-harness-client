@@ -101,9 +101,9 @@ $('keyBtn').onclick = () => {
   if (panelOpen) refreshKeyInfo();
 };
 
-// 点击面板外部关闭
+// 点击面板外部关闭（用 closest 匹配 keyBtn 内部元素，避免点击 svg/path 图标时误关面板）
 document.addEventListener('click', (e) => {
-  if (panelOpen && !e.target.closest('#panel') && e.target.id !== 'keyBtn') {
+  if (panelOpen && !e.target.closest('#panel') && !e.target.closest('#keyBtn')) {
     panelOpen = false;
     $('panel').classList.remove('show');
     $('keyBtn').classList.remove('active');

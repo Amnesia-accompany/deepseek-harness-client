@@ -1,0 +1,15 @@
+- insert:
+    - id: dsh-dafeiyu
+      name: dsh-dafeiyu
+      config:
+        enabled: true
+        scale: 1
+        bubbleScale: 1
+        activityLevel: normal
+        reducedMotion: false
+        bubbleMode: always
+        bubbleStates:
+          - SUCCESS
+          - ERROR
+          - WAITING
+        includeSubagents: false

@@ -66,17 +66,26 @@ async function api(path, body) {
 function SkillsPage() {
   const [items, setItems] = React.useState(null)
   const [err, setErr] = React.useState('')
-  React.useEffect(() => {
-    let dead = false
+  const [deleting, setDeleting] = React.useState('')
+  const load = () => {
+    setItems(null); setErr('')
     api('/api/dshmgr/skills').then((r) => {
-      if (dead) return
       if (r && r.ok) setItems(r.items)
       else setErr((r && r.error) || '加载失败')
-    }).catch((e) => { if (!dead) setErr(String(e && e.message || e)) })
-    return () => { dead = true }
-  }, [])
+    }).catch((e) => setErr(String(e && e.message || e)))
+  }
+  React.useEffect(() => { load() }, [])
+  const del = (name) => {
+    if (!confirm('确定删除技能「' + name + '」？此操作会删除技能文件，不可恢复。')) return
+    setDeleting(name)
+    api('/api/dshmgr/skill-delete', { name }).then((r) => {
+      setDeleting('')
+      if (r && r.ok) load()
+      else alert('删除失败：' + ((r && r.error) || '未知'))
+    }).catch((e) => { setDeleting(''); alert('删除失败：' + String(e && e.message || e)) })
+  }
   return React.createElement('div', { className: 'mgr-page' },
-    React.createElement('div', { className: 'mgr-sub' }, 'DSH 内置与已注册的技能（skilled 能力）'),
+    React.createElement('div', { className: 'mgr-sub' }, '本机安装的技能（点击删除可移除）'),
     err ? React.createElement('div', { className: 'mgr-empty' }, err)
       : items === null ? React.createElement('div', { className: 'mgr-empty' }, '加载中…')
       : items.length === 0 ? React.createElement('div', { className: 'mgr-empty' }, '暂无技能')
@@ -85,6 +94,9 @@ function SkillsPage() {
             React.createElement('div', null,
               React.createElement('div', { className: 'mgr-name' }, s.name),
               React.createElement('div', { className: 'mgr-desc' }, s.desc || '（无描述）'),
+            ),
+            React.createElement('div', { className: 'mgr-act' },
+              React.createElement('button', { className: 'mgr-btn danger', disabled: deleting === s.name, onClick: () => del(s.name) }, deleting === s.name ? '删除中…' : '删除'),
             ),
           )),
         ),
