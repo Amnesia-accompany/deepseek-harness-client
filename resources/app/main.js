@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  蓝色大肥鱼 DeepSeek Harness 懒人客户端 - 桌面客户端主进程
 //  位置：resources\app\main.js（客户端根目录 = 本文件的上上级）
 //  ------------------------------------------------------------
@@ -241,7 +241,7 @@ function createWindow() {
     titleBarOverlay: {
       color: '#ffffff',
       symbolColor: '#333333',
-      height: 40,
+      height: 30,
     },
     backgroundColor: '#ffffff',
     icon: path.join(ROOT, 'resources', 'app', 'ui', 'icon.png'),
@@ -356,18 +356,22 @@ function initIpc() {
         fs.cpSync(path.join(srcDir, name), pkgDir, { recursive: true });
         logLine('[plugins] deployed ' + name);
       }
-      // patch 条目（js-yaml 操作）
+      // patch 条目（js-yaml 操作；新增行必须放进 insert 块，cordis patch 才生效）
       const pf = profilePatchFile0();
       if (pf && YAML) {
         let data;
         try { data = YAML.load(stripBom(fs.readFileSync(pf, 'utf8'))); } catch (e) { data = []; }
         const arr = Array.isArray(data) ? data : [];
+        const hasName = (n) => arr.some((p) => p && p.name === n) ||
+          arr.some((p) => p && Array.isArray(p.insert) && p.insert.some((q) => q && q.name === n));
         let changed = false;
         for (const name of fs.readdirSync(srcDir)) {
-          if (!arr.some((p) => p && p.name === name)) {
-            arr.push({ id: 'builtin-' + name.replace(/[^a-z0-9_-]/gi, '').toLowerCase().slice(0, 20), name });
-            changed = true;
-          }
+          if (hasName(name)) continue;
+          const id = 'builtin-' + name.replace(/[^a-z0-9_-]/gi, '').toLowerCase().slice(0, 20);
+          const ins = arr.find((p) => p && Array.isArray(p.insert));
+          if (ins) ins.insert.push({ id, name });
+          else arr.push({ insert: [{ id, name }] });
+          changed = true;
         }
         if (changed) {
           fs.writeFileSync(pf, YAML.dump(arr, { lineWidth: 120 }), 'utf8');

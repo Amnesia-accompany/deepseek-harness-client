@@ -2,8 +2,14 @@
 //  DeepSeek Harness 设置增强 - Client 半
 //  在 DSH 自带设置中注册三个页面：Skills 管理 / MCP 服务器 / 插件市场
 //  数据通过 fetch 调用 Host 的 /api/dshmgr/* 路由
+//  （ModuleLoader bundle 格式，由 clientModules 直接加载）
 // ============================================================
-import React from 'react'
+window.__ModuleLoader__.load({
+  id: 'deepseek-harness-settings-enhancer',
+  factory: (require) => {
+    var module = { exports: {} };
+    var exports = module.exports;
+    let React = require('react')
 
 const CSS = `
 .mgr-page { font-size: 13px; color: var(--dsw-alias-label-primary, #1a2233); }
@@ -303,7 +309,7 @@ function MarketPage() {
   )
 }
 
-export function apply(ctx) {
+function apply(ctx) {
   injectCss()
   const slots = ctx.get('slots')
   if (slots === undefined) return
@@ -321,3 +327,9 @@ export function apply(ctx) {
     () => React.createElement(MarketPage),
   ))
 }
+
+    exports.apply = apply;
+    exports.inject = ['slots'];
+    return module.exports;
+  },
+});

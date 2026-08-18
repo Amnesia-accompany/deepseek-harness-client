@@ -1,0 +1,31 @@
+{
+  "name": "dsh-glass-ui",
+  "description": "DeepSeek Harness 玻璃拟态界面：漂浮玻璃/兼容模式、模糊度/磨砂度调节、流体/壁纸背景（支持 Wallpaper Engine 壁纸）",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "glass",
+    "glassmorphism",
+    "ui",
+    "wallpaper-engine"
+  ]
+}

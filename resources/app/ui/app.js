@@ -164,7 +164,7 @@ function switchView(v) {
   $('tabChat').classList.toggle('active', v === 'chat');
   $('tabFiles').classList.toggle('active', v === 'files');
   if (v === 'files') {
-    if (currentFile) $('content-pane').classList.add('open');
+    if (openFiles.length) $('content-pane').classList.add('open');
     loadTree();
   }
 }
@@ -172,8 +172,9 @@ function switchView(v) {
 // ================= 文件树 =================
 let treeCache = {};   // dirRel -> {loaded:bool}
 let expandedDirs = {};
-let currentFile = null;   // { rel, name }
-let dirty = false;
+let openFiles = [];   // [{ rel, name, content, dirty, history, historyIdx }]
+let activeRel = null; // 当前激活的文件 rel
+let suppressHistory = false;
 
 function fmtSize(n) {
   if (n < 1024) return n + ' B';
@@ -350,77 +351,150 @@ function makeNode(it, parentRel) {
   return wrap;
 }
 
-// ================= 编辑器 =================
-// 自维护撤销/重做历史栈（比 execCommand 可靠）
-let history = [];
-let historyIdx = -1;
-let suppressHistory = false;
+// ================= 编辑器（多标签 + 行号 + 语法高亮） =================
+const LINE_H = 20;   // 行高（px），与 CSS 一致
+const PAD_V = 12;    // 编辑器上下内边距（px）
+let overlayTimer = null;
 
-function snapshot() {
-  history = history.slice(0, historyIdx + 1);
-  history.push($('editor').value);
-  if (history.length > 100) history.shift();
-  historyIdx = history.length - 1;
+function cur() {
+  return openFiles.find(f => f.rel === activeRel) || null;
+}
+
+// —— 文件标签栏 ——
+function renderTabs() {
+  const bar = $('filetabs');
+  bar.innerHTML = '';
+  if (!openFiles.length) return;
+  openFiles.forEach((f) => {
+    const t = document.createElement('div');
+    t.className = 'ftab' + (f.rel === activeRel ? ' active' : '');
+    t.title = f.rel;
+    const nm = document.createElement('span');
+    nm.className = 'ftab-name';
+    nm.textContent = f.name + (f.dirty ? ' ●' : '');
+    const x = document.createElement('span');
+    x.className = 'ftab-x';
+    x.textContent = '✕';
+    x.title = '关闭标签';
+    x.onclick = (e) => { e.stopPropagation(); closeTab(f.rel); };
+    t.appendChild(nm);
+    t.appendChild(x);
+    t.onclick = () => activateFile(f.rel);
+    bar.appendChild(t);
+  });
 }
 
 async function openFile(rel, name) {
+  const existing = openFiles.find(f => f.rel === rel);
+  if (existing) { activateFile(rel); return; }
   const r = await window.dsh.fsRead(rel);
   if (!r.ok) {
-    $('editor').value = '';
-    $('contentName').textContent = '打开失败';
     $('editorPath').textContent = rel;
     $('editorDirty').textContent = r.error;
+    $('editorDirty').className = 'dirty';
     return;
   }
-  currentFile = { rel, name };
-  dirty = false;
-  history = [r.content];
-  historyIdx = 0;
-  $('editor').value = r.content;
-  $('contentName').textContent = name;
-  $('editorPath').textContent = rel;
-  $('editorDirty').textContent = '';
+  openFiles.push({ rel, name, content: r.content, dirty: false, history: [r.content], historyIdx: 0 });
+  activateFile(rel);
+}
+
+function activateFile(rel) {
+  const f = openFiles.find(x => x.rel === rel);
+  if (!f) return;
+  activeRel = rel;
+  $('editor').value = f.content;
+  $('contentName').textContent = f.name;
+  $('editorPath').textContent = f.rel;
+  updateDirtyUI(f);
   $('content-pane').classList.add('open');
+  renderTabs();
+  renderOverlay();
   $('editor').focus();
 }
 
-function markDirty() {
-  if (!currentFile) return;
-  dirty = true;
-  $('editorDirty').textContent = '● 未保存';
-  $('editorDirty').className = 'dirty';
+function closeTab(rel) {
+  const idx = openFiles.findIndex(f => f.rel === rel);
+  if (idx < 0) return;
+  const f = openFiles[idx];
+  if (f.dirty && !confirm('「' + f.name + '」有未保存的修改，确定关闭？')) return;
+  openFiles.splice(idx, 1);
+  if (activeRel === rel) {
+    if (openFiles.length) {
+      activateFile(openFiles[Math.min(idx, openFiles.length - 1)].rel);
+    } else {
+      clearEditorPane();
+    }
+  } else {
+    renderTabs();
+  }
+}
+
+function clearEditorPane() {
+  activeRel = null;
+  $('content-pane').classList.remove('open');
+  $('contentName').textContent = '未打开文件';
+  $('editor').value = '';
+  $('editorPath').textContent = '';
+  $('editorDirty').textContent = '';
+  $('editorDirty').className = '';
+  $('highlight').innerHTML = '';
+  $('gutterInner').textContent = '';
+  $('gutterInner').style.height = '0px';
+  renderTabs();
+}
+
+function updateDirtyUI(f) {
+  if (!f) return;
+  $('editorDirty').textContent = f.dirty ? '● 未保存' : '';
+  $('editorDirty').className = f.dirty ? 'dirty' : '';
+}
+
+function snapshot(f) {
+  f.history = f.history.slice(0, f.historyIdx + 1);
+  f.history.push($('editor').value);
+  if (f.history.length > 100) f.history.shift();
+  f.historyIdx = f.history.length - 1;
 }
 
 $('editor').addEventListener('input', () => {
-  markDirty();
-  if (!suppressHistory) snapshot();
+  const f = cur();
+  if (!f) return;
+  f.content = $('editor').value;
+  f.dirty = true;
+  updateDirtyUI(f);
+  if (!suppressHistory) snapshot(f);
+  renderTabs();
+  scheduleOverlay();
 });
 
-function applyHistory() {
+function applyHistory(f) {
   suppressHistory = true;
-  $('editor').value = history[historyIdx];
+  $('editor').value = f.history[f.historyIdx];
   suppressHistory = false;
-  markDirty();
+  f.content = $('editor').value;
+  f.dirty = true;
+  updateDirtyUI(f);
+  renderOverlay();
+  renderTabs();
   $('editor').focus();
 }
 
-$('btnUndo').onclick = () => {
-  if (historyIdx > 0) { historyIdx--; applyHistory(); }
-};
-$('btnRedo').onclick = () => {
-  if (historyIdx < history.length - 1) { historyIdx++; applyHistory(); }
-};
+$('btnUndo').onclick = () => { const f = cur(); if (f && f.historyIdx > 0) { f.historyIdx--; applyHistory(f); } };
+$('btnRedo').onclick = () => { const f = cur(); if (f && f.historyIdx < f.history.length - 1) { f.historyIdx++; applyHistory(f); } };
 
 $('btnSave').onclick = async () => {
-  if (!currentFile) return;
+  const f = cur();
+  if (!f) return;
   const btn = $('btnSave');
   btn.disabled = true;
-  const r = await window.dsh.fsWrite(currentFile.rel, $('editor').value);
+  const r = await window.dsh.fsWrite(f.rel, $('editor').value);
   btn.disabled = false;
   if (r.ok) {
-    dirty = false;
+    f.dirty = false;
+    f.content = $('editor').value;
     $('editorDirty').textContent = '已保存 ' + new Date().toLocaleTimeString();
     $('editorDirty').className = '';
+    renderTabs();
     loadTree(); // 刷新树（大小变化）
   } else {
     $('editorDirty').textContent = '保存失败：' + r.error;
@@ -428,17 +502,9 @@ $('btnSave').onclick = async () => {
   }
 };
 
-// 撤销 / 重做（自维护历史栈）
-$('btnUndo').onclick = () => {
-  if (historyIdx > 0) { historyIdx--; applyHistory(); }
-};
-$('btnRedo').onclick = () => {
-  if (historyIdx < history.length - 1) { historyIdx++; applyHistory(); }
-};
-
 document.addEventListener('keydown', (e) => {
   const ctrl = e.ctrlKey || e.metaKey;
-  if (ctrl && e.key.toLowerCase() === 's' && currentFile) {
+  if (ctrl && e.key.toLowerCase() === 's' && cur()) {
     e.preventDefault();
     $('btnSave').click();
   }
@@ -449,6 +515,192 @@ document.addEventListener('keydown', (e) => {
     if (document.activeElement === $('editor')) { e.preventDefault(); $('btnRedo').click(); }
   }
 });
+
+// —— 行号 + 高亮重绘（滚动同步） ——
+function syncScroll() {
+  const ed = $('editor');
+  $('gutter').scrollTop = ed.scrollTop;
+  $('highlight').scrollTop = ed.scrollTop;
+  $('highlight').scrollLeft = ed.scrollLeft;
+}
+
+$('editor').addEventListener('scroll', syncScroll);
+
+function scheduleOverlay() {
+  if (overlayTimer) clearTimeout(overlayTimer);
+  overlayTimer = setTimeout(() => { overlayTimer = null; renderOverlay(); }, 80);
+}
+
+function renderOverlay() {
+  const f = cur();
+  const val = f ? f.content : '';
+  const lines = val.split('\n');
+  const n = lines.length;
+  // 行号列
+  const gi = $('gutterInner');
+  gi.style.height = (n * LINE_H + PAD_V * 2) + 'px';
+  if (n > 5000) {
+    // 超大文件：纯文本行号，避免海量节点
+    let t = '';
+    for (let i = 1; i <= n; i++) t += i + '\n';
+    gi.textContent = t;
+  } else {
+    gi.textContent = '';
+    const frag = document.createDocumentFragment();
+    for (let i = 1; i <= n; i++) {
+      const d = document.createElement('div');
+      d.style.height = LINE_H + 'px';
+      d.textContent = String(i);
+      frag.appendChild(d);
+    }
+    gi.appendChild(frag);
+  }
+  // 高亮层
+  const lang = f ? langForPath(f.name) : '';
+  const hl = highlightLines(lines, lang);
+  $('highlight').innerHTML = hl === null ? escHtml(val) : hl;
+  syncScroll();
+}
+
+// —— 轻量语法高亮（VSCode Light+ 配色） ——
+const HL_KEYWORDS = {
+  javascript: 'abstract arguments async await boolean break byte case catch char class const continue debugger default delete do double else enum eval export extends false final finally float for function goto if implements import in instanceof int interface let long native new null package private protected public return short static super switch synchronized this throw throws transient true try typeof var void volatile while with yield of undefined',
+  python: 'False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield match case',
+  clike: 'auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while bool true false null class new delete this friend virtual override public private protected template typename namespace using try catch throw finally string',
+  shell: 'if then else elif fi for while until do done case esac in function return exit echo export local readonly set unset shift source printf read cd pwd ls cat mkdir rm cp mv grep sed awk sudo true false',
+  yaml: 'true false null yes no on off',
+  sql: 'select from where insert into values update set delete create table index view drop alter join left right inner outer on group by order having limit offset and or not null primary key foreign references unique default',
+  json: 'true false null',
+  ini: 'true false',
+  powershell: 'function param return if else elseif for foreach while do until switch break continue exit write-host write-output new-object get-content set-content true false',
+};
+const HL_BLOCK = { javascript: 1, clike: 1, css: 1, markup: 1 };
+const HL_LINE = { javascript: '//', clike: '//', shell: '#', python: '#', yaml: '#', sql: '--', ini: '#', powershell: '#' };
+
+function langForPath(name) {
+  const dot = name.lastIndexOf('.');
+  const ext = dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
+  switch (ext) {
+    case 'js': case 'mjs': case 'cjs': case 'jsx': case 'ts': case 'tsx': case 'vue': return 'javascript';
+    case 'json': case 'jsonc': return 'json';
+    case 'py': case 'pyw': return 'python';
+    case 'html': case 'htm': case 'xml': case 'svg': case 'xhtml': return 'markup';
+    case 'css': case 'scss': case 'less': return 'css';
+    case 'md': case 'markdown': return 'markdown';
+    case 'sh': case 'bash': case 'zsh': case 'fish': return 'shell';
+    case 'ps1': return 'powershell';
+    case 'yaml': case 'yml': return 'yaml';
+    case 'java': case 'c': case 'h': case 'cpp': case 'hpp': case 'cc': case 'cxx': case 'cs': case 'go': case 'rs': case 'php': case 'rb': case 'kt': case 'kts': case 'swift': case 'scala': case 'm': return 'clike';
+    case 'sql': return 'sql';
+    case 'toml': case 'ini': case 'conf': case 'cfg': return 'ini';
+    default: return '';
+  }
+}
+
+function tokenizeLines(lines, lang) {
+  const kwText = HL_KEYWORDS[lang] || '';
+  const kwSet = kwText ? new Set(kwText.split(/\s+/)) : null;
+  const useBlock = !!HL_BLOCK[lang];
+  const lc = HL_LINE[lang] || '';
+  const state = { inBlock: false };
+  const out = [];
+  for (let li = 0; li < lines.length; li++) out.push(tokenizeLine(lines[li], lang, kwSet, useBlock, lc, state));
+  return out;
+}
+
+function tokenizeLine(line, lang, kwSet, useBlock, lc, state) {
+  const tokens = [];
+  const n = line.length;
+  if (lang === 'markdown') {
+    const hm = line.match(/^(#{1,6})\s/);
+    if (hm) {
+      tokens.push({ t: hm[1], c: 'kw' });
+      tokens.push({ t: line.slice(hm[0].length - 1), c: '' });
+      return tokens;
+    }
+    if (/^```/.test(line) || /^~~~/.test(line)) return [{ t: line, c: 'com' }];
+  }
+  let i = 0;
+  while (i < n) {
+    const rest = line.slice(i);
+    if (state.inBlock) {
+      const end = rest.indexOf('*/');
+      if (end === -1) { tokens.push({ t: rest, c: 'com' }); break; }
+      tokens.push({ t: rest.slice(0, end + 2), c: 'com' });
+      i += end + 2;
+      state.inBlock = false;
+      continue;
+    }
+    if (lang === 'markup' && rest.startsWith('<!--')) {
+      const end = rest.indexOf('-->');
+      if (end === -1) { tokens.push({ t: rest, c: 'com' }); break; }
+      tokens.push({ t: rest.slice(0, end + 3), c: 'com' });
+      i += end + 3;
+      continue;
+    }
+    if (lc && rest.startsWith(lc)) { tokens.push({ t: rest, c: 'com' }); break; }
+    if (useBlock && rest.startsWith('/*')) {
+      const end = rest.indexOf('*/', 2);
+      if (end === -1) { tokens.push({ t: rest, c: 'com' }); state.inBlock = true; break; }
+      tokens.push({ t: rest.slice(0, end + 2), c: 'com' });
+      i += end + 2;
+      continue;
+    }
+    const sm = rest.match(/^(?:'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\\n]|\\.)*`)/);
+    if (sm) { tokens.push({ t: sm[0], c: 'str' }); i += sm[0].length; continue; }
+    if (lang === 'markup') {
+      const tm = rest.match(/^<\/?[A-Za-z][\w.:-]*(?:\s+[^<>]*?)?\/?>/);
+      if (tm) { tokens.push({ t: tm[0], c: 'tag' }); i += tm[0].length; continue; }
+    }
+    if (lang === 'css') {
+      const cm = rest.match(/^#[0-9a-fA-F]{3,8}\b/);
+      if (cm) { tokens.push({ t: cm[0], c: 'num' }); i += cm[0].length; continue; }
+    }
+    if (lang === 'yaml') {
+      const ym = rest.match(/^[\w.-]+(?=:)/);
+      if (ym) { tokens.push({ t: ym[0], c: 'kw' }); i += ym[0].length; continue; }
+    }
+    if (lang === 'ini') {
+      const im = rest.match(/^\[[^\]]*\]/);
+      if (im) { tokens.push({ t: im[0], c: 'tag' }); i += im[0].length; continue; }
+    }
+    if (kwSet) {
+      const km = rest.match(/^[A-Za-z_$][\w$]*/);
+      if (km && kwSet.has(km[0])) { tokens.push({ t: km[0], c: 'kw' }); i += km[0].length; continue; }
+    }
+    const nm = rest.match(/^(?:0x[\da-fA-F]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)/);
+    if (nm) { tokens.push({ t: nm[0], c: 'num' }); i += nm[0].length; continue; }
+    let j = i + 1;
+    while (j < n) {
+      const ch = line[j];
+      if (ch === '"' || ch === "'" || ch === '`') break;
+      if (lc && line.startsWith(lc, j)) break;
+      if (useBlock && ch === '/' && line[j + 1] === '*') break;
+      if (kwSet && /[A-Za-z_$]/.test(ch)) break;
+      if (/\d/.test(ch)) break;
+      j++;
+    }
+    tokens.push({ t: line.slice(i, j), c: '' });
+    i = j;
+  }
+  return tokens;
+}
+
+function highlightLines(lines, lang) {
+  if (!lang || lines.length > 4000) return null; // 超长文件仅行号
+  const toks = tokenizeLines(lines, lang);
+  let html = '';
+  for (let i = 0; i < lines.length; i++) {
+    if (i) html += '\n';
+    let lineHtml = '';
+    for (const tok of toks[i]) {
+      if (tok.c) lineHtml += '<span class="tok-' + tok.c + '">' + escHtml(tok.t) + '</span>';
+      else lineHtml += escHtml(tok.t);
+    }
+    html += lineHtml;
+  }
+  return html;
+}
 
 $('btnOpenFile').onclick = async () => {
   const r = await window.dsh.fsPickFile();
@@ -602,13 +854,15 @@ async function confirmDelete(rel, isDir) {
   if (!confirm('确定删除「' + rel + '」' + (isDir ? ' 及其全部内容' : '') + ' 吗？' + extra + '此操作不可恢复！')) return;
   const r = await window.dsh.fsDelete(rel);
   if (!r.ok) { alert('删除失败：' + r.error); return; }
-  if (currentFile && currentFile.rel === rel) {
-    currentFile = null;
-    $('content-pane').classList.remove('open');
-    $('contentName').textContent = '未打开文件';
-    $('editor').value = '';
-    $('editorPath').textContent = '';
-    $('editorDirty').textContent = '';
+  const openIdx = openFiles.findIndex(f => f.rel === rel);
+  if (openIdx >= 0) {
+    openFiles.splice(openIdx, 1);
+    if (activeRel === rel) {
+      if (openFiles.length) activateFile(openFiles[Math.min(openIdx, openFiles.length - 1)].rel);
+      else clearEditorPane();
+    } else {
+      renderTabs();
+    }
   }
   loadTree();
 }
