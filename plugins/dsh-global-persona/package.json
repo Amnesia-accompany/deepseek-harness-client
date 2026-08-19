@@ -1,0 +1,32 @@
+{
+  "name": "dsh-global-persona",
+  "version": "0.1.0",
+  "description": "全局人设：在 DeepSeek Harness 设置里配置一个全局人设（persona），注入到每个新工作区、新会话和子任务的系统提示词中。",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "persona",
+    "global",
+    "prompt"
+  ],
+  "license": "MIT"
+}
