@@ -155,6 +155,26 @@ $('pBalanceBtn').onclick = async () => {
   setTimeout(() => { btn.disabled = false; btn.textContent = '查询余额'; }, 2000);
 };
 
+// 本机消耗统计（读取会话记录，按官方价格估算）
+$('pUsageBtn').onclick = async () => {
+  const btn = $('pUsageBtn');
+  btn.disabled = true;
+  btn.textContent = '统计中…';
+  const r = await window.dsh.usageStats();
+  const box = $('pUsage');
+  if (!r.ok) {
+    box.innerHTML = '<span class="bad">' + esc(r.error) + '</span>';
+  } else {
+    const fmt = (n) => (n / 1e6).toFixed(2) + 'M';
+    box.innerHTML =
+      '<div class="amt">¥' + r.cny.toFixed(2) + ' <span class="small">≈ $' + r.usd.toFixed(2) + '</span></div>' +
+      '<div class="small">' + r.sessions + ' 个会话 · 输入 ' + fmt(r.totalIn) +
+      ' · 输出 ' + fmt(r.totalOut) + ' · 缓存 ' + fmt(r.totalCache) + '</div>' +
+      '<div class="small">合计 ' + fmt(r.totalTokens) + ' tokens（deepseek-chat 官方价估算，仅供参考）</div>';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = '统计消耗'; }, 2000);
+};
+
 // ================= 选项卡：对话 / 文件 =================
 $('tabChat').onclick = () => switchView('chat');
 $('tabFiles').onclick = () => switchView('files');
