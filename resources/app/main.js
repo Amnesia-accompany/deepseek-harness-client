@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  蓝色大肥鱼 DeepSeek Harness 懒人客户端 - 桌面客户端主进程
 //  位置：resources\app\main.js（客户端根目录 = 本文件的上上级）
 //  ------------------------------------------------------------
@@ -435,80 +435,6 @@ function initIpc() {
       req.on('error', () => resolve({ ok: false, error: '无法连接 DeepSeek（请检查网络或代理）' }));
       req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: '请求超时' }); });
     });
-  });
-
-  // 工具箱：统计本机历史会话的 token 消耗（解压 ~/.dsh/sessions 下的 zstd 日志）
-  // zstd 会话文件是「多帧拼接」：每帧以固定 magic 开头，逐帧解压后拼接。
-  const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
-  function decodeZstdFrames(buf) {
-    const zlib = require('zlib');
-    if (typeof zlib.zstdDecompressSync !== 'function') throw new Error('当前 Node 不支持 zstd 解码');
-    const parts = [];
-    let start = buf.indexOf(ZSTD_MAGIC);
-    while (start >= 0 && start < buf.length) {
-      const next = buf.indexOf(ZSTD_MAGIC, start + 4);
-      const end = next < 0 ? buf.length : next;
-      try {
-        parts.push(zlib.zstdDecompressSync(buf.subarray(start, end)).toString('utf8'));
-      } catch (e) { /* 帧内偶然出现的 magic 误匹配：跳过该段 */ }
-      if (next < 0) break;
-      start = next;
-    }
-    return parts.join('\n');
-  }
-
-  ipcMain.handle('app:usage-stats', async () => {
-    try {
-      const sessionsDir = path.join(HOME_DIR, 'sessions');
-      if (!fs.existsSync(sessionsDir)) return { ok: false, error: '未找到会话目录' };
-      const files = [];
-      (function walk(p) {
-        let entries;
-        try { entries = fs.readdirSync(p, { withFileTypes: true }); } catch (e) { return; }
-        for (const e of entries) {
-          const f = path.join(p, e.name);
-          if (e.isDirectory()) walk(f);
-          else if (e.name.endsWith('.jsonl.zstd') || e.name.endsWith('.jsonl')) files.push(f);
-        }
-      })(sessionsDir);
-      const MAX_TEXT = 64 * 1024 * 1024; // 单文件解压文本上限保护
-      let totalIn = 0, totalOut = 0, totalCache = 0, totalReasoning = 0, sessions = 0;
-      for (const f of files) {
-        let text;
-        try {
-          const buf = fs.readFileSync(f);
-          if (buf.length > 256 * 1024 * 1024) continue; // 超大文件跳过
-          text = f.endsWith('.zstd') ? decodeZstdFrames(buf) : buf.toString('utf8');
-          if (text.length > MAX_TEXT) text = text.slice(0, MAX_TEXT);
-        } catch (e) { continue; }
-        sessions++;
-        for (const line of text.split('\n')) {
-          if (line.indexOf('usage') < 0) continue;
-          try {
-            const ev = JSON.parse(line);
-            const u = ev && ev.data && ev.data.chunk && ev.data.chunk.usage;
-            if (!u) continue;
-            totalIn += Number(u.inputTokens) || 0;
-            totalOut += Number(u.outputTokens) || 0;
-            totalCache += Number(u.cacheReadTokens) || 0;
-            totalReasoning += Number(u.reasoningTokens) || 0;
-          } catch (e) { /* 非 usage 事件或坏行，忽略 */ }
-        }
-        await new Promise((r) => setImmediate(r)); // 让出事件循环，避免窗口卡顿
-      }
-      // 按 DeepSeek 官方价格估算（deepseek-chat：输入 $0.27/M、缓存命中 $0.07/M、输出 $1.10/M；汇率 7.2 仅供参考）
-      const usd = totalIn * 0.27 / 1e6 + totalCache * 0.07 / 1e6 + totalOut * 1.10 / 1e6;
-      const cny = usd * 7.2;
-      return {
-        ok: true,
-        sessions,
-        totalIn, totalOut, totalCache, totalReasoning,
-        totalTokens: totalIn + totalOut + totalCache,
-        usd, cny,
-      };
-    } catch (e) {
-      return { ok: false, error: '统计失败：' + (e && e.message || e) };
-    }
   });
 
   ipcMain.handle('app:log-tail', () => logTail());

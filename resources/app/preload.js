@@ -11,7 +11,6 @@ contextBridge.exposeInMainWorld('dsh', {
   submitKey: (key) => ipcRenderer.invoke('app:submit-key', key),
   keyInfo: () => ipcRenderer.invoke('app:key-info'),
   checkBalance: () => ipcRenderer.invoke('app:check-balance'),
-  usageStats: () => ipcRenderer.invoke('app:usage-stats'),
   fsRoot: () => ipcRenderer.invoke('fs:root'),
   fsRoots: () => ipcRenderer.invoke('fs:roots'),
   fsPickFolder: () => ipcRenderer.invoke('fs:pick-folder'),
