@@ -2,7 +2,8 @@
  * dsh-lyric-sidebar — Client half
  *
  * 在 DSH 侧边栏底部（设置按钮旁的 footer 行）注册一张歌词卡片：
- *  - 卡片向上弹出，位于「工作区列表下方、设置上方」
+ *  - 运行时测量侧边栏容器（[class*="sidebarCol"]）→ 卡片在工作区下方、
+ *    设置上方，且相对侧边栏水平居中，宽度/折叠自适应
  *  - 背景使用 --dsw-specific-sidebar-fill（与工作区栏一致），随主题明暗自适应
  *  - 数据来自 Electron 客户端通过 window.postMessage 推送的 { type: 'dsh-lyric' }
  *  - 播放中显示 5 行歌词，当前行品牌色高亮放大；无歌词时显示单行歌名
@@ -13,29 +14,12 @@ window.__ModuleLoader__.load({ id: 'dsh-lyric-sidebar', factory: (require) => {
   const React = require('react')
   const { useEffect, useState } = React
 
-  const cardStyle = {
-    position: 'fixed',
-    left: 8,
-    bottom: 56,
-    width: 244,
-    boxSizing: 'border-box',
-    padding: '10px 12px',
-    background: 'var(--dsw-specific-sidebar-fill, #ffffff)',
-    border: '1px solid var(--dsw-alias-border-l1, #e6e9ef)',
-    borderRadius: 12,
-    boxShadow: '0 -6px 22px rgba(0, 0, 0, 0.10)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2,
-    zIndex: 40,
-    pointerEvents: 'none',
-  }
+  const CARD_W = 232
   const lineStyle = {
     fontSize: 11,
     lineHeight: 1.5,
     color: 'var(--dsw-alias-label-secondary, #8a94a6)',
-    opacity: 0.55,
+    opacity: 0.5,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -53,12 +37,13 @@ window.__ModuleLoader__.load({ id: 'dsh-lyric-sidebar', factory: (require) => {
     textOverflow: 'ellipsis',
     maxWidth: '100%',
     transition: 'all 0.3s ease',
-    transform: 'scale(1.04)',
+    transform: 'scale(1.05)',
+    textShadow: '0 1px 6px color-mix(in srgb, var(--dsw-alias-brand-primary, #1f6fd6) 25%, transparent)',
   }
-  const hiddenStyle = { display: 'none' }
 
   function LyricCard() {
     const [state, setState] = useState({ show: false, lines: [], index: -1, single: '' })
+    const [pos, setPos] = useState(null) // { left, width, bottom }
 
     useEffect(() => {
       const onMessage = (event) => {
@@ -72,17 +57,63 @@ window.__ModuleLoader__.load({ id: 'dsh-lyric-sidebar', factory: (require) => {
         })
       }
       window.addEventListener('message', onMessage)
-      return () => window.removeEventListener('message', onMessage)
+
+      // 测量侧边栏容器：宽度/位置变化时自适应（拖拽、折叠、resize）
+      let col = null
+      let ro = null
+      const measure = () => {
+        if (!col) col = document.querySelector('[class*="sidebarCol"]')
+        if (!col) { setPos(null); return }
+        const r = col.getBoundingClientRect()
+        setPos({ left: r.left, width: r.width, bottom: r.bottom })
+      }
+      measure()
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(measure)
+        const attach = () => {
+          if (!col) col = document.querySelector('[class*="sidebarCol"]')
+          if (col) ro.observe(col)
+          else setTimeout(attach, 500)
+        }
+        attach()
+      } else {
+        window.addEventListener('resize', measure)
+      }
+
+      return () => {
+        window.removeEventListener('message', onMessage)
+        if (ro) ro.disconnect()
+        window.removeEventListener('resize', measure)
+      }
     }, [])
 
-    if (!state.show) return React.createElement('div', { style: hiddenStyle })
+    if (!state.show || !pos) return null
+    if (pos.width < 120) return null // 侧边栏折叠成窄条时不显示
 
     const hasLrc = state.lines.length > 0
     const lines = hasLrc ? state.lines : [state.single || '']
     const idx = hasLrc ? state.index : 0
-    // 只显示当前行附近 5 行
     const start = Math.max(0, idx - 2)
     const visible = lines.slice(start, start + 5)
+
+    const cardStyle = {
+      position: 'fixed',
+      left: pos.left + (pos.width - CARD_W) / 2,
+      bottom: Math.max(8, window.innerHeight - pos.bottom + 10),
+      width: CARD_W,
+      boxSizing: 'border-box',
+      padding: '10px 12px',
+      background: 'var(--dsw-specific-sidebar-fill, #ffffff)',
+      border: '1px solid var(--dsw-alias-border-l1, #e6e9ef)',
+      borderRadius: 12,
+      boxShadow: '0 -6px 22px rgba(0, 0, 0, 0.10)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 2,
+      zIndex: 40,
+      pointerEvents: 'none',
+    }
 
     return React.createElement('div', { style: cardStyle },
       visible.map((text, i) => {

@@ -873,7 +873,7 @@ start();
 
 // ================= 音乐播放器（网易云链接 / 歌单 / 顶栏歌词） =================
 const musicAudio = $('musicAudio');
-const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false, singleText: '' };
+const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false, singleText: '', lyricShown: false };
 let mPanelOpen = false;
 
 // 把歌词推送给 DSH 网页（侧边栏歌词卡插件接收）
@@ -882,7 +882,7 @@ function mPushLyric() {
   if (!frame || !frame.contentWindow) return;
   frame.contentWindow.postMessage({
     type: 'dsh-lyric',
-    show: $('lyricArea').classList.contains('show'),
+    show: mState.lyricShown,
     lines: mState.lrc.map((l) => l.c),
     index: mState.lrcIdx,
     single: mState.singleText || '',
@@ -908,45 +908,23 @@ function mParseLrc(text) {
   return out;
 }
 
-// 多行歌词：渲染全部行，唱到哪行哪行高亮放大
+// 多行歌词：歌词渲染交给 DSH 侧边栏歌词卡（postMessage 推送）
 function mRenderLrc() {
-  const move = $('lyricMove');
-  move.innerHTML = '';
-  for (const l of mState.lrc) {
-    const div = document.createElement('div');
-    div.className = 'l-line';
-    div.textContent = l.c;
-    move.appendChild(div);
-  }
   mState.singleText = '';
-  mUpdateLrcHighlight();
+  mState.lyricShown = true;
+  mPushLyric();
 }
 function mUpdateLrcHighlight() {
-  const move = $('lyricMove');
-  const lines = move.children;
-  const idx = mState.lrcIdx;
-  for (let i = 0; i < lines.length; i++) {
-    const active = i === idx;
-    if (lines[i].classList.contains('active') !== active) lines[i].classList.toggle('active', active);
-  }
-  if (idx >= 0) move.style.transform = 'translateY(' + (-((idx - 2) * 24)) + 'px)';
   mPushLyric();
 }
 // 单行模式（无歌词 / 加载 / 提示）
 function mShowLyricSingle(text) {
-  const move = $('lyricMove');
-  move.innerHTML = '';
-  const div = document.createElement('div');
-  div.className = 'l-line active';
-  div.textContent = text || '';
-  move.appendChild(div);
-  move.style.transform = 'translateY(0)';
   mState.singleText = text || '';
-  $('lyricArea').classList.add('show');
+  mState.lyricShown = true;
   mPushLyric();
 }
 function mHideLyric() {
-  $('lyricArea').classList.remove('show');
+  mState.lyricShown = false;
   mState.singleText = '';
   mPushLyric();
 }
