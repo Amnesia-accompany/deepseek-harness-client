@@ -440,7 +440,8 @@ function initIpc() {
 
   // ---------------- 音乐模块：多音源解析（网易云/B站/直链）/ 歌单 / Cookie 配置 ----------------
   const MUSIC_FILE = path.join(DATA_DIR, 'music-playlist.json');
-  const MUSIC_CONFIG = path.join(DATA_DIR, 'music-config.json');
+  const MUSIC_CONFIG = path.join(HOME_DIR, 'music-config.json'); // 与 DSH「音乐」设置共用
+  const MUSIC_CONFIG_LEGACY = path.join(DATA_DIR, 'music-config.json');
   const MUSIC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
   function musicHttpGet(url, extraHeaders) {
@@ -514,6 +515,12 @@ function initIpc() {
   }
 
   function loadMusicConfig() {
+    // 迁移旧版配置文件（data/music-config.json → ~/.dsh/music-config.json）
+    try {
+      if (!fs.existsSync(MUSIC_CONFIG) && fs.existsSync(MUSIC_CONFIG_LEGACY)) {
+        fs.copyFileSync(MUSIC_CONFIG_LEGACY, MUSIC_CONFIG);
+      }
+    } catch (e) { }
     try { return JSON.parse(fs.readFileSync(MUSIC_CONFIG, 'utf8')) || {}; } catch (e) { return {}; }
   }
   function saveMusicConfig(cfg) {

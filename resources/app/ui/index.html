@@ -338,8 +338,9 @@
     <img src="icon.png" alt="" />
     <div class="t" id="titleText">DeepSeek Harness</div>
     <button id="musicBtn" title="音乐播放器" aria-label="音乐播放器">
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.5" fill="#d43c33"/>
+        <path d="M13.9 5.6v8.05a3.15 3.15 0 1 1-1.55-2.73V8.1l3.9-1.07v3.32a3.15 3.15 0 1 1-1.55-2.73V6.05L13.9 5.6z" fill="#fff"/>
       </svg>
     </button>
     <button id="keyBtn" title="API Key 与余额" aria-label="API Key 与余额">
@@ -442,18 +443,10 @@
         <input id="mLinkInput" type="text" placeholder="粘贴网易云单曲链接，如 music.163.com/song?id=…" />
         <button class="mini-btn blue" id="mAddBtn">添加</button>
       </div>
-      <div class="hint" id="mStatus">支持网易云单曲链接；播放时顶栏会显示歌词</div>
+      <div class="hint" id="mStatus">支持网易云单曲链接；播放时侧边栏会显示歌词</div>
     </div>
     <div class="card" style="padding: 8px 10px 10px;">
       <div id="mList"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">高级：网易云 Cookie（可选）</div>
-      <div class="mline">
-        <input id="mCookieInput" type="password" placeholder="粘贴网易云 Cookie（含 MUSIC_U=…）" />
-        <button class="mini-btn" id="mCookieSave">保存</button>
-      </div>
-      <div class="hint" id="mCookieStatus">网易云音频需登录态：浏览器登录 music.163.com 后，从开发者工具复制 Cookie 填入即可解锁播放；B 站与直链无需此设置。</div>
     </div>
     <div class="card" style="border-bottom: 0; display: grid; gap: 6px;">
       <div class="m-vol">

@@ -1096,21 +1096,11 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// 网易云 Cookie（解锁网易云音频）
-window.dsh.musicConfigGet().then((c) => {
-  if (c && c.neteaseCookie) $('mCookieInput').value = c.neteaseCookie;
-}).catch(() => { });
-$('mCookieSave').onclick = async () => {
-  const v = $('mCookieInput').value.trim();
-  await window.dsh.musicConfigSet({ neteaseCookie: v });
-  $('mCookieStatus').textContent = v ? '已保存 ✓ 下次播放网易云歌曲时生效' : '已清除 Cookie';
-};
-
 // 音量调节（记住上次的音量）
 (function initVolume() {
-  let vol = 0.8;
+  let vol = 0.5;
   try { const saved = localStorage.getItem('dsh-music-vol'); if (saved != null) vol = Number(saved); } catch (e) { }
-  if (!(vol >= 0 && vol <= 1)) vol = 0.8;
+  if (!(vol >= 0 && vol <= 1)) vol = 0.5;
   musicAudio.volume = vol;
   const pct = Math.round(vol * 100);
   $('mVol').value = pct;
