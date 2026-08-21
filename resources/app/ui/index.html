@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -22,6 +22,27 @@
     #keyBtn svg { width: 14px; height: 14px; display: block; }
     #keyBtn:hover { background: #f2f4f7; }
     #keyBtn.active { background: #e8ecf2; color: #1f6fd6; }
+
+    /* ---------- 音乐：顶栏歌词条 + 音乐按钮 ---------- */
+    #musicBtn { width: 28px; height: 24px; border: 0; border-radius: 6px;
+      background: transparent; cursor: pointer; color: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s; -webkit-app-region: no-drag; margin-right: 2px; }
+    #musicBtn svg { width: 14px; height: 14px; display: block; }
+    #musicBtn:hover { background: #f2f4f7; }
+    #musicBtn.active { background: #e8ecf2; color: #1f6fd6; }
+    #lyricArea { position: absolute; left: 50%; transform: translateX(-50%); top: 0;
+      height: 30px; max-width: 46%; display: none; align-items: center; justify-content: center;
+      -webkit-app-region: no-drag; pointer-events: none; overflow: hidden; z-index: 2; }
+    #lyricArea.show { display: flex; }
+    #lyricArea .lyric-line { font-size: 12px; font-weight: 500; white-space: nowrap;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+      background: linear-gradient(90deg, #3a7bd5, #8e54e9, #ff6f91, #3a7bd5);
+      background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+      color: transparent; animation: lyricFlow 6s linear infinite; }
+    #lyricArea .lyric-line.lyric-pop { animation: lyricFlow 6s linear infinite, lyricPop 0.45s ease; }
+    @keyframes lyricFlow { to { background-position: 300% 0; } }
+    @keyframes lyricPop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
     /* ---------- API Key / 余额面板 ---------- */
     #panel { position: fixed; top: 34px; right: 10px; width: 330px;
@@ -56,6 +77,45 @@
     #panel .bal-line { font-size: 13px; color: #3c4452; line-height: 1.7; }
     #panel .bal-line .amt { font-size: 17px; font-weight: 700; color: #1a2233; }
     #panel .bal-line .small { font-size: 11.5px; color: #97a0b0; }
+
+    /* ---------- 音乐面板 ---------- */
+    #musicPanel { position: fixed; top: 34px; right: 10px; width: 380px;
+      background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(20,30,60,0.18),
+      0 2px 8px rgba(20,30,60,0.08); border: 1px solid #e6e9ef; z-index: 9998;
+      display: none; flex-direction: column; overflow: hidden; }
+    #musicPanel.show { display: flex; }
+    #musicPanel .phead { padding: 13px 18px 11px; border-bottom: 1px solid #f0f2f6;
+      font-size: 13px; font-weight: 700; color: #1a2233; display: flex;
+      align-items: center; justify-content: space-between; }
+    #musicPanel .phead .sub { font-size: 11px; font-weight: 400; color: #97a0b0; }
+    #musicPanel .card { padding: 12px 14px; border-bottom: 1px solid #f0f2f6; }
+    #musicPanel .card:last-child { border-bottom: 0; }
+    #musicPanel .mline { display: flex; align-items: center; gap: 8px; }
+    #musicPanel input[type=text] { flex: 1; padding: 7px 10px; border: 1px solid #dde2ea;
+      border-radius: 7px; font-size: 12px; outline: none; color: #1a2233; min-width: 0; }
+    #musicPanel input[type=text]:focus { border-color: #1f6fd6; }
+    #musicPanel .hint { font-size: 11px; color: #97a0b0; margin-top: 8px; line-height: 1.55; }
+    #mList { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+    #mList .m-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+      border-radius: 7px; cursor: pointer; transition: background 0.15s; }
+    #mList .m-item:hover { background: #f3f5f8; }
+    #mList .m-item.playing { background: #e8f1fd; }
+    #mList .m-item.playing .m-title { color: #1f6fd6; font-weight: 600; }
+    #mList .m-item .m-idx { width: 18px; text-align: center; font-size: 11px; color: #b0b7c3; flex-shrink: 0; }
+    #mList .m-item.playing .m-idx { color: #1f6fd6; }
+    #mList .m-item .m-title { flex: 1; font-size: 12.5px; color: #3c4452;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #mList .m-item .m-artist { font-size: 11px; color: #97a0b0; max-width: 90px;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #mList .m-item .m-del { border: 0; background: transparent; color: #c3c9d4;
+      font-size: 14px; cursor: pointer; padding: 0 4px; border-radius: 4px; flex-shrink: 0; }
+    #mList .m-item .m-del:hover { color: #e5484d; background: #fdecee; }
+    #mList .m-empty { padding: 18px 0; text-align: center; font-size: 12px; color: #b0b7c3; }
+    #musicPanel .card-title { font-size: 11.5px; font-weight: 700; color: #8a94a6;
+      letter-spacing: 1px; margin-bottom: 8px; }
+    #musicPanel .m-now { font-size: 11.5px; color: #8a94a6; text-align: center; padding: 0 4px 2px;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #musicPanel .m-ctl { display: flex; align-items: center; justify-content: center; gap: 10px; }
     #stage { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
       background: #fff; opacity: 0; transition: opacity 0.35s ease; }
     #stage.show { opacity: 1; }
@@ -186,37 +246,79 @@
     #promptBox .btns { display: flex; justify-content: flex-end; gap: 8px; }
     #promptBox .mini-btn { padding: 7px 16px; font-size: 12.5px; }
 
-    /* ---------- 启动页 ---------- */
+    /* ---------- 启动页（浅色精致风：光晕 + 噪点 + logo 模糊入场 + 扫光 + 进度条） ---------- */
     #boot { position: fixed; top: 30px; left: 0; right: 0; bottom: 0;
-      display: none; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #141b33, #1c2648, #16213f, #1e2c55);
-      background-size: 300% 300%;
-      animation: gradientShift 9s ease infinite; }
+      display: none; align-items: center; justify-content: center; overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 16% 22%, rgba(255,255,255,.95) 0 9%, transparent 29%),
+        radial-gradient(circle at 84% 75%, rgba(255,220,229,.82) 0 8%, transparent 30%),
+        linear-gradient(120deg, #e8f2ff 0%, #f8f8ff 47%, #ffe9ef 100%); }
     #boot.show { display: flex; }
-    .boot-inner { display: flex; flex-direction: column; align-items: center;
-      animation: fadeUp 0.55s ease both; }
-    .logo-wrap { position: relative; width: 92px; height: 92px; margin-bottom: 22px; }
-    .logo-wrap .glow { position: absolute; inset: -14px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(88,138,255,0.35) 0%, rgba(88,138,255,0) 70%);
-      animation: breathGlow 2.4s ease-in-out infinite; }
-    .logo-wrap .logo { width: 92px; height: 92px; border-radius: 50%;
-      box-shadow: 0 6px 28px rgba(10, 16, 40, 0.55);
-      animation: breath 2.4s ease-in-out infinite; position: relative; }
-    .boot-title { color: #fff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;
-      margin-bottom: 26px; text-shadow: 0 2px 12px rgba(0,0,0,0.35); }
-    .spinner { width: 34px; height: 34px; border-radius: 50%;
-      border: 3px solid rgba(255,255,255,0.16); border-top-color: #5b8cff;
-      animation: spin 0.9s linear infinite; margin-bottom: 18px; }
-    .boot-msg { color: #aeb9d6; font-size: 13.5px; display: flex; align-items: center; }
-    .dots { display: inline-block; width: 22px; text-align: left; }
-    .dots::after { content: ''; animation: dots 1.6s steps(4) infinite; }
+    #boot::before { content: ""; position: absolute; inset: -20%; z-index: -2;
+      background:
+        radial-gradient(circle at 25% 35%, rgba(189,222,255,.45), transparent 24%),
+        radial-gradient(circle at 72% 55%, rgba(255,194,211,.35), transparent 23%);
+      filter: blur(36px);
+      animation: bootBreathe 5s ease-in-out infinite alternate; }
+    .boot-orb { position: absolute; border-radius: 999px; filter: blur(1px); opacity: .5; pointer-events: none; }
+    .boot-orb.a { width: 240px; height: 240px; left: -80px; top: 12%; background: rgba(206,232,255,.55);
+      animation: bootDriftA 7s ease-in-out infinite alternate; }
+    .boot-orb.b { width: 280px; height: 280px; right: -110px; bottom: -90px; background: rgba(255,210,222,.52);
+      animation: bootDriftB 8s ease-in-out infinite alternate; }
+    .boot-grain { position: absolute; inset: 0; opacity: .08; pointer-events: none;
+      background-image: radial-gradient(rgba(0,0,0,.7) .55px, transparent .55px);
+      background-size: 7px 7px; mix-blend-mode: multiply; }
+    .boot-inner { position: relative; display: flex; flex-direction: column; align-items: center;
+      gap: 20px; transform: translateY(-2vh); }
+    .boot-logo-wrap { position: relative; opacity: 0; transform: translateY(22px) scale(.82); filter: blur(9px);
+      animation: bootLogoIn 1.15s cubic-bezier(.2,.9,.2,1) .35s forwards; }
+    .boot-logo-wrap .boot-logo { display: block; width: min(280px, 68vw); height: auto; border-radius: 50%;
+      box-shadow: 0 18px 35px rgba(43,53,77,.16); }
+    .boot-shine { position: absolute; inset: -10%; z-index: 1; pointer-events: none;
+      background: linear-gradient(105deg, transparent 34%, rgba(255,255,255,0) 42%,
+        rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 58%, transparent 66%);
+      transform: translateX(-120%);
+      animation: bootShine 1.3s ease-in-out 1.5s forwards; }
+    .boot-tagline { display: flex; align-items: center; gap: 9px; color: rgba(23,24,28,.62);
+      font-size: 13px; letter-spacing: .18em; opacity: 0; transform: translateY(8px);
+      animation: bootTextIn .8s ease 1.45s forwards; }
+    .boot-tagline .boot-dot { width: 6px; height: 6px; border-radius: 50%; background: #17181c; opacity: .65; }
+    .boot-loader { position: relative; width: 170px; height: 3px; margin-top: 2px; overflow: hidden;
+      border-radius: 99px; background: rgba(23,24,28,.09); opacity: 0;
+      animation: bootTextIn .7s ease 1.7s forwards; }
+    .boot-loader::after { content: ""; position: absolute; inset: 0; width: 35%; border-radius: inherit;
+      background: rgba(23,24,28,.72); transform: translateX(-120%);
+      animation: bootLoad 1.45s cubic-bezier(.35,.05,.35,1) 1.82s forwards,
+                 bootLoadLoop 1.6s ease-in-out 3.4s infinite; }
+    .boot-msg { color: rgba(23,24,28,.5); font-size: 12.5px; letter-spacing: .06em; min-height: 18px;
+      opacity: 0; animation: bootTextIn .7s ease 1.9s forwards; }
+    .boot-corner { position: absolute; left: 28px; bottom: 24px; color: rgba(23,24,28,.34);
+      font-size: 11px; letter-spacing: .08em; opacity: 0; animation: bootTextIn .7s ease 2s forwards; }
+    .boot-spark { position: absolute; width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(255,255,255,.9); box-shadow: 0 0 16px rgba(255,255,255,.9); opacity: 0; }
+    .boot-spark.s1 { left: 19%; top: 31%; animation: bootSparkle 2.6s ease-in-out .2s infinite; }
+    .boot-spark.s2 { left: 78%; top: 27%; animation: bootSparkle 2.9s ease-in-out .8s infinite; }
+    .boot-spark.s3 { left: 73%; top: 69%; animation: bootSparkle 2.4s ease-in-out 1.2s infinite; }
+    .boot-spark.s4 { left: 27%; top: 72%; animation: bootSparkle 3.1s ease-in-out .5s infinite; }
 
-    @keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-    @keyframes breath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
-    @keyframes breathGlow { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.18); opacity: 1; } }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-    @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75%,100% { content: '...'; } }
+    @keyframes bootLogoIn {
+      0% { opacity: 0; transform: translateY(22px) scale(.82); filter: blur(9px); }
+      65% { opacity: 1; transform: translateY(-3px) scale(1.025); filter: blur(0); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    @keyframes bootShine { 0% { transform: translateX(-120%); opacity: 0; } 18% { opacity: 1; } 100% { transform: translateX(120%); opacity: 0; } }
+    @keyframes bootTextIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bootLoad { 0% { transform: translateX(-120%); } 100% { transform: translateX(500%); } }
+    @keyframes bootLoadLoop { 0% { transform: translateX(-120%); } 100% { transform: translateX(500%); } }
+    @keyframes bootBreathe { from { transform: scale(.95) translate3d(-1%, -1%, 0); } to { transform: scale(1.08) translate3d(2%, 1%, 0); } }
+    @keyframes bootDriftA { from { transform: translate(0,0); } to { transform: translate(60px,25px); } }
+    @keyframes bootDriftB { from { transform: translate(0,0); } to { transform: translate(-50px,-35px); } }
+    @keyframes bootSparkle { 0%,100% { opacity: 0; transform: scale(.5); } 35% { opacity: .75; transform: scale(1); } 60% { opacity: .1; transform: scale(.65); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      #boot *, #boot *::before, #boot *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
 
     /* ---------- 错误页 / 输入框 ---------- */
     #error, #keyform { position: fixed; top: 30px; left: 0; right: 0; bottom: 0;
@@ -242,6 +344,12 @@
   <div id="titlebar">
     <img src="icon.png" alt="" />
     <div class="t" id="titleText">DeepSeek Harness</div>
+    <div id="lyricArea"><span class="lyric-line" id="lyricLine"></span></div>
+    <button id="musicBtn" title="音乐播放器" aria-label="音乐播放器">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+      </svg>
+    </button>
     <button id="keyBtn" title="API Key 与余额" aria-label="API Key 与余额">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 8V5a1 1 0 0 0-1-1H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/>
@@ -335,16 +443,53 @@
     </div>
   </div>
 
-  <div id="boot">
-    <div class="boot-inner">
-      <div class="logo-wrap">
-        <div class="glow"></div>
-        <img class="logo" src="boot-logo.png" alt="" />
+  <div id="musicPanel">
+    <div class="phead">音乐 <span class="sub">网易云单曲 · 我的歌单</span></div>
+    <div class="card">
+      <div class="mline">
+        <input id="mLinkInput" type="text" placeholder="粘贴网易云单曲链接，如 music.163.com/song?id=…" />
+        <button class="mini-btn blue" id="mAddBtn">添加</button>
       </div>
-      <div class="boot-title">DeepSeek Harness</div>
-      <div class="spinner"></div>
-      <div class="boot-msg"><span id="bootMsg">正在启动服务</span><span class="dots"></span></div>
+      <div class="hint" id="mStatus">支持网易云单曲链接；播放时顶栏会显示歌词</div>
     </div>
+    <div class="card" style="padding: 8px 10px 10px;">
+      <div id="mList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">高级：网易云 Cookie（可选）</div>
+      <div class="mline">
+        <input id="mCookieInput" type="password" placeholder="粘贴网易云 Cookie（含 MUSIC_U=…）" />
+        <button class="mini-btn" id="mCookieSave">保存</button>
+      </div>
+      <div class="hint" id="mCookieStatus">网易云音频需登录态：浏览器登录 music.163.com 后，从开发者工具复制 Cookie 填入即可解锁播放；B 站与直链无需此设置。</div>
+    </div>
+    <div class="card" style="border-bottom: 0; display: grid; gap: 6px;">
+      <div class="m-now" id="mNow">未在播放</div>
+      <div class="m-ctl">
+        <button class="mini-btn" id="mPrevBtn">⏮ 上一首</button>
+        <button class="mini-btn blue" id="mPlayBtn">▶ 播放</button>
+        <button class="mini-btn" id="mNextBtn">下一首 ⏭</button>
+      </div>
+    </div>
+  </div>
+  <audio id="musicAudio"></audio>
+
+  <div id="boot">
+    <div class="boot-orb a"></div>
+    <div class="boot-orb b"></div>
+    <div class="boot-grain"></div>
+    <span class="boot-spark s1"></span><span class="boot-spark s2"></span>
+    <span class="boot-spark s3"></span><span class="boot-spark s4"></span>
+    <div class="boot-inner">
+      <div class="boot-logo-wrap">
+        <img class="boot-logo" src="boot-logo.png" alt="DeepSeek Harness">
+      </div>
+      <div class="boot-tagline"><span class="boot-dot"></span><span>蓝色大肥鱼 · DeepSeek Harness</span><span class="boot-dot"></span></div>
+      <div class="boot-loader" aria-label="Loading"></div>
+      <div class="boot-msg"><span id="bootMsg">正在启动服务</span></div>
+    </div>
+    <div class="boot-corner">DEEPSEEK CLIENT · STARTING</div>
+    <div class="boot-shine"></div>
   </div>
 
   <div id="error">

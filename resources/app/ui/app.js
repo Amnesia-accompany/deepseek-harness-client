@@ -870,3 +870,216 @@ async function confirmDelete(rel, isDir) {
 // 主进程启动服务后页面就绪
 window.dsh.isMaximized().then(() => { }).catch(() => { });
 start();
+
+// ================= 音乐播放器（网易云链接 / 歌单 / 顶栏歌词） =================
+const musicAudio = $('musicAudio');
+const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false };
+let mPanelOpen = false;
+
+function mParseLrc(text) {
+  const out = [];
+  const re = /\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+  for (const raw of String(text || '').split('\n')) {
+    const times = [];
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(raw))) {
+      times.push(parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3] || '0') / 1000);
+    }
+    const content = raw.replace(/\[[^\]]*\]/g, '').trim();
+    if (!content) continue;
+    if (times.length) times.forEach((t) => out.push({ t, c: content }));
+  }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+
+function mShowLyric(text) {
+  const line = $('lyricLine');
+  line.textContent = text || '';
+  line.classList.remove('lyric-pop');
+  void line.offsetWidth; // 强制重排，重放入场动画
+  line.classList.add('lyric-pop');
+  $('lyricArea').classList.add('show');
+}
+function mHideLyric() {
+  $('lyricArea').classList.remove('show');
+}
+
+function mRenderList() {
+  const box = $('mList');
+  if (!mState.list.length) {
+    box.innerHTML = '<div class="m-empty">歌单还是空的，粘贴一首网易云单曲链接吧 🎵</div>';
+    return;
+  }
+  box.innerHTML = '';
+  mState.list.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'm-item' + (i === mState.index ? ' playing' : '');
+    row.innerHTML =
+      '<span class="m-idx">' + (i === mState.index ? '♪' : (i + 1)) + '</span>' +
+      '<span class="m-title">' + esc(item.title || '未知歌曲') + '</span>' +
+      '<span class="m-artist">' + esc(item.artist || '') + '</span>' +
+      '<button class="m-del" title="删除">×</button>';
+    row.addEventListener('click', (e) => {
+      if (e.target.classList.contains('m-del')) {
+        mState.list.splice(i, 1);
+        void window.dsh.musicSave(mState.list);
+        if (mState.index === i) mStop();
+        else if (mState.index > i) mState.index--;
+        mRenderList();
+        return;
+      }
+      mPlayAt(i);
+    });
+    box.appendChild(row);
+  });
+}
+
+function mUpdateNow() {
+  const item = mState.list[mState.index];
+  $('mNow').textContent = item
+    ? (mState.playing ? '♪ ' : '') + (item.title || '未知歌曲') + (item.artist ? ' - ' + item.artist : '')
+    : '未在播放';
+  $('mPlayBtn').textContent = mState.playing ? '⏸ 暂停' : '▶ 播放';
+}
+
+async function mPlayAt(i) {
+  const item = mState.list[i];
+  if (!item) return;
+  mState.index = i;
+  $('titleText').style.display = 'none'; // 顶栏让位给歌词
+  mShowLyric('正在加载《' + (item.title || '') + '》…');
+  let link;
+  if (item.type === 'bili') link = 'https://www.bilibili.com/video/' + item.id;
+  else if (item.type === 'direct') link = item.url;
+  else link = 'https://music.163.com/song?id=' + item.id;
+  const r = await window.dsh.musicResolve(link);
+  if (!r.ok || !r.url) {
+    const hint = (r && r.needCookie)
+      ? '网易云音频需在「高级」里填入网易云 Cookie 后才能播放'
+      : ((r && r.error) || '音频获取失败（可能受版权限制）');
+    mShowLyric('无法播放：' + hint);
+    return;
+  }
+  mState.lrc = mParseLrc(r.lyric);
+  mState.lrcIdx = -1;
+  musicAudio.src = r.url;
+  mState.playing = true;
+  mUpdateNow();
+  mRenderList();
+  if (!r.lyric) mShowLyric('♪ ' + (r.title || item.title || ''));
+  try { await musicAudio.play(); }
+  catch (e) { mShowLyric('播放失败（可能受版权或网络限制）'); }
+}
+
+function mTogglePlay() {
+  if (mState.index < 0) {
+    if (mState.list.length) mPlayAt(0);
+    return;
+  }
+  if (musicAudio.paused) {
+    musicAudio.play();
+    mState.playing = true;
+  } else {
+    musicAudio.pause();
+    mState.playing = false;
+  }
+  mUpdateNow();
+}
+
+function mStop() {
+  musicAudio.pause();
+  musicAudio.removeAttribute('src');
+  mState.playing = false;
+  mState.index = -1;
+  mState.lrc = [];
+  mHideLyric();
+  $('titleText').style.display = '';
+  mUpdateNow();
+  mRenderList();
+}
+
+function mNext() { if (mState.list.length) mPlayAt((mState.index + 1) % mState.list.length); }
+function mPrev() { if (mState.list.length) mPlayAt((mState.index - 1 + mState.list.length) % mState.list.length); }
+
+musicAudio.ontimeupdate = () => {
+  if (!mState.lrc.length) return;
+  const t = musicAudio.currentTime;
+  let lo = 0, hi = mState.lrc.length - 1, best = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (mState.lrc[mid].t <= t) { best = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  if (best !== mState.lrcIdx) {
+    mState.lrcIdx = best;
+    mShowLyric(best >= 0 ? mState.lrc[best].c : '');
+  }
+};
+musicAudio.onended = () => {
+  if (mState.index >= 0 && mState.list.length > 1) mNext();
+  else mStop();
+};
+musicAudio.onpause = () => { mState.playing = false; mUpdateNow(); };
+musicAudio.onplay = () => { mState.playing = true; mUpdateNow(); };
+musicAudio.onerror = () => { mShowLyric('播放出错（音频链接可能已失效）'); };
+
+$('musicBtn').onclick = () => {
+  mPanelOpen = !mPanelOpen;
+  $('musicPanel').classList.toggle('show', mPanelOpen);
+  $('musicBtn').classList.toggle('active', mPanelOpen);
+  if (mPanelOpen) {
+    window.dsh.musicList().then((l) => {
+      mState.list = l || [];
+      mRenderList();
+      mUpdateNow();
+    });
+  }
+};
+
+$('mAddBtn').onclick = async () => {
+  const link = $('mLinkInput').value.trim();
+  if (!link) return;
+  const btn = $('mAddBtn');
+  btn.disabled = true;
+  $('mStatus').textContent = '解析中…';
+  const r = await window.dsh.musicResolve(link);
+  btn.disabled = false;
+  if (!r.ok) {
+    $('mStatus').textContent = '添加失败：' + (r.error || '链接无法解析');
+    return;
+  }
+  const exists = mState.list.some((x) => x.id === r.id);
+  if (exists) {
+    $('mStatus').textContent = '歌单里已有《' + r.title + '》';
+    $('mLinkInput').value = '';
+    return;
+  }
+  mState.list.push({ id: r.id, title: r.title, artist: r.artist, type: r.type || 'netease', url: r.type === 'direct' ? link : undefined, addedAt: Date.now() });
+  await window.dsh.musicSave(mState.list);
+  $('mLinkInput').value = '';
+  $('mStatus').textContent = '已添加《' + r.title + '》' + (r.artist ? ' - ' + r.artist : '');
+  mRenderList();
+};
+$('mPlayBtn').onclick = mTogglePlay;
+$('mNextBtn').onclick = mNext;
+$('mPrevBtn').onclick = mPrev;
+
+// 点击面板外部关闭音乐面板
+document.addEventListener('click', (e) => {
+  if (mPanelOpen && !e.target.closest('#musicPanel') && !e.target.closest('#musicBtn')) {
+    mPanelOpen = false;
+    $('musicPanel').classList.remove('show');
+    $('musicBtn').classList.remove('active');
+  }
+});
+
+// 网易云 Cookie（解锁网易云音频）
+window.dsh.musicConfigGet().then((c) => {
+  if (c && c.neteaseCookie) $('mCookieInput').value = c.neteaseCookie;
+}).catch(() => { });
+$('mCookieSave').onclick = async () => {
+  const v = $('mCookieInput').value.trim();
+  await window.dsh.musicConfigSet({ neteaseCookie: v });
+  $('mCookieStatus').textContent = v ? '已保存 ✓ 下次播放网易云歌曲时生效' : '已清除 Cookie';
+};

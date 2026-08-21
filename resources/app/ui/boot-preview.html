@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>启动动画预览</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden;
+    font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f7f8fc; }
+  /* ===== 与 index.html 启动页同步 ===== */
+  #boot { position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 16% 22%, rgba(255,255,255,.95) 0 9%, transparent 29%),
+      radial-gradient(circle at 84% 75%, rgba(255,220,229,.82) 0 8%, transparent 30%),
+      linear-gradient(120deg, #e8f2ff 0%, #f8f8ff 47%, #ffe9ef 100%); }
+  #boot::before { content: ""; position: absolute; inset: -20%; z-index: -2;
+    background:
+      radial-gradient(circle at 25% 35%, rgba(189,222,255,.45), transparent 24%),
+      radial-gradient(circle at 72% 55%, rgba(255,194,211,.35), transparent 23%);
+    filter: blur(36px);
+    animation: bootBreathe 5s ease-in-out infinite alternate; }
+  .boot-orb { position: absolute; border-radius: 999px; filter: blur(1px); opacity: .5; pointer-events: none; }
+  .boot-orb.a { width: 240px; height: 240px; left: -80px; top: 12%; background: rgba(206,232,255,.55);
+    animation: bootDriftA 7s ease-in-out infinite alternate; }
+  .boot-orb.b { width: 280px; height: 280px; right: -110px; bottom: -90px; background: rgba(255,210,222,.52);
+    animation: bootDriftB 8s ease-in-out infinite alternate; }
+  .boot-grain { position: absolute; inset: 0; opacity: .08; pointer-events: none;
+    background-image: radial-gradient(rgba(0,0,0,.7) .55px, transparent .55px);
+    background-size: 7px 7px; mix-blend-mode: multiply; }
+  .boot-inner { position: relative; display: flex; flex-direction: column; align-items: center;
+    gap: 20px; transform: translateY(-2vh); }
+  .boot-logo-wrap { position: relative; opacity: 0; transform: translateY(22px) scale(.82); filter: blur(9px);
+    animation: bootLogoIn 1.15s cubic-bezier(.2,.9,.2,1) .35s forwards; }
+  .boot-logo-wrap .boot-logo { display: block; width: min(280px, 68vw); height: auto; border-radius: 50%;
+    box-shadow: 0 18px 35px rgba(43,53,77,.16); }
+  .boot-shine { position: absolute; inset: -10%; z-index: 1; pointer-events: none;
+    background: linear-gradient(105deg, transparent 34%, rgba(255,255,255,0) 42%,
+      rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 58%, transparent 66%);
+    transform: translateX(-120%);
+    animation: bootShine 1.3s ease-in-out 1.5s forwards; }
+  .boot-tagline { display: flex; align-items: center; gap: 9px; color: rgba(23,24,28,.62);
+    font-size: 13px; letter-spacing: .18em; opacity: 0; transform: translateY(8px);
+    animation: bootTextIn .8s ease 1.45s forwards; }
+  .boot-tagline .boot-dot { width: 6px; height: 6px; border-radius: 50%; background: #17181c; opacity: .65; }
+  .boot-loader { position: relative; width: 170px; height: 3px; margin-top: 2px; overflow: hidden;
+    border-radius: 99px; background: rgba(23,24,28,.09); opacity: 0;
+    animation: bootTextIn .7s ease 1.7s forwards; }
+  .boot-loader::after { content: ""; position: absolute; inset: 0; width: 35%; border-radius: inherit;
+    background: rgba(23,24,28,.72); transform: translateX(-120%);
+    animation: bootLoad 1.45s cubic-bezier(.35,.05,.35,1) 1.82s forwards,
+               bootLoadLoop 1.6s ease-in-out 3.4s infinite; }
+  .boot-msg { color: rgba(23,24,28,.5); font-size: 12.5px; letter-spacing: .06em; min-height: 18px;
+    opacity: 0; animation: bootTextIn .7s ease 1.9s forwards; }
+  .boot-corner { position: absolute; left: 28px; bottom: 24px; color: rgba(23,24,28,.34);
+    font-size: 11px; letter-spacing: .08em; opacity: 0; animation: bootTextIn .7s ease 2s forwards; }
+  .boot-spark { position: absolute; width: 4px; height: 4px; border-radius: 50%;
+    background: rgba(255,255,255,.9); box-shadow: 0 0 16px rgba(255,255,255,.9); opacity: 0; }
+  .boot-spark.s1 { left: 19%; top: 31%; animation: bootSparkle 2.6s ease-in-out .2s infinite; }
+  .boot-spark.s2 { left: 78%; top: 27%; animation: bootSparkle 2.9s ease-in-out .8s infinite; }
+  .boot-spark.s3 { left: 73%; top: 69%; animation: bootSparkle 2.4s ease-in-out 1.2s infinite; }
+  .boot-spark.s4 { left: 27%; top: 72%; animation: bootSparkle 3.1s ease-in-out .5s infinite; }
+
+  @keyframes bootLogoIn {
+    0% { opacity: 0; transform: translateY(22px) scale(.82); filter: blur(9px); }
+    65% { opacity: 1; transform: translateY(-3px) scale(1.025); filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  @keyframes bootShine { 0% { transform: translateX(-120%); opacity: 0; } 18% { opacity: 1; } 100% { transform: translateX(120%); opacity: 0; } }
+  @keyframes bootTextIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes bootLoad { 0% { transform: translateX(-120%); } 100% { transform: translateX(500%); } }
+  @keyframes bootLoadLoop { 0% { transform: translateX(-120%); } 100% { transform: translateX(500%); } }
+  @keyframes bootBreathe { from { transform: scale(.95) translate3d(-1%, -1%, 0); } to { transform: scale(1.08) translate3d(2%, 1%, 0); } }
+  @keyframes bootDriftA { from { transform: translate(0,0); } to { transform: translate(60px,25px); } }
+  @keyframes bootDriftB { from { transform: translate(0,0); } to { transform: translate(-50px,-35px); } }
+  @keyframes bootSparkle { 0%,100% { opacity: 0; transform: scale(.5); } 35% { opacity: .75; transform: scale(1); } 60% { opacity: .1; transform: scale(.65); } }
+
+  /* 预览：定格完成态 */
+  .boot-logo-wrap, .boot-tagline, .boot-loader, .boot-msg, .boot-corner { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+  .boot-loader::after { animation: none !important; transform: translateX(60%); }
+  .boot-shine { animation: none !important; transform: translateX(0); opacity: 1; }
+</style>
+</head>
+<body>
+  <div id="boot">
+    <div class="boot-orb a"></div>
+    <div class="boot-orb b"></div>
+    <div class="boot-grain"></div>
+    <span class="boot-spark s1"></span><span class="boot-spark s2"></span>
+    <span class="boot-spark s3"></span><span class="boot-spark s4"></span>
+    <div class="boot-inner">
+      <div class="boot-logo-wrap">
+        <img class="boot-logo" src="boot-logo.png" alt="DeepSeek Harness">
+      </div>
+      <div class="boot-tagline"><span class="boot-dot"></span><span>蓝色大肥鱼 · DeepSeek Harness</span><span class="boot-dot"></span></div>
+      <div class="boot-loader" aria-label="Loading"></div>
+      <div class="boot-msg"><span id="bootMsg">正在启动服务</span></div>
+    </div>
+    <div class="boot-corner">DEEPSEEK CLIENT · STARTING</div>
+    <div class="boot-shine"></div>
+  </div>
+</body>
+</html>

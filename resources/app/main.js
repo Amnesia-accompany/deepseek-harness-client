@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 //  蓝色大肥鱼 DeepSeek Harness 懒人客户端 - 桌面客户端主进程
 //  位置：resources\app\main.js（客户端根目录 = 本文件的上上级）
 //  ------------------------------------------------------------
@@ -435,6 +435,149 @@ function initIpc() {
       req.on('error', () => resolve({ ok: false, error: '无法连接 DeepSeek（请检查网络或代理）' }));
       req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: '请求超时' }); });
     });
+  });
+
+  // ---------------- 音乐模块：多音源解析（网易云/B站/直链）/ 歌单 / Cookie 配置 ----------------
+  const MUSIC_FILE = path.join(DATA_DIR, 'music-playlist.json');
+  const MUSIC_CONFIG = path.join(DATA_DIR, 'music-config.json');
+  const MUSIC_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  function musicHttpGet(url, extraHeaders) {
+    return new Promise((resolve, reject) => {
+      const headers = Object.assign({
+        'User-Agent': MUSIC_UA,
+        'Accept': '*/*',
+      }, extraHeaders || {});
+      const req = https.get(url, { headers, timeout: 15000 }, (res) => {
+        let body = '';
+        res.on('data', (d) => { body += d; if (body.length > 5e6) req.destroy(); });
+        res.on('end', () => {
+          let json = null;
+          try { json = JSON.parse(body); } catch (e) { }
+          resolve({ status: res.statusCode, body, json, headers: res.headers });
+        });
+      });
+      req.on('error', () => reject(new Error('网络错误')));
+      req.on('timeout', () => { req.destroy(); reject(new Error('请求超时')); });
+    });
+  }
+
+  function loadMusicConfig() {
+    try { return JSON.parse(fs.readFileSync(MUSIC_CONFIG, 'utf8')) || {}; } catch (e) { return {}; }
+  }
+  function saveMusicConfig(cfg) {
+    try { fs.writeFileSync(MUSIC_CONFIG, JSON.stringify(cfg || {}, null, 2), 'utf8'); } catch (e) { }
+  }
+
+  // 网易云：标题 + 歌词（匿名可用）；音频需要登录 Cookie（MUSIC_U）
+  async function resolveNetease(id) {
+    const cfg = loadMusicConfig();
+    const extraCookie = (cfg.neteaseCookie && String(cfg.neteaseCookie).trim()) || '';
+    let url = '';
+    try {
+      const r = await musicHttpGet('https://music.163.com/api/song/enhance/player/url?ids=[' + id + ']', {
+        'Referer': 'https://music.163.com/',
+        'Cookie': 'os=pc; appver=2.9.7;' + (extraCookie ? ' ' + extraCookie : ''),
+      });
+      const u = r.json && r.json.data && r.json.data[0] && r.json.data[0].url;
+      if (u) url = u;
+    } catch (e) { }
+    let title = '未知歌曲', artist = '';
+    try {
+      const r = await musicHttpGet('https://music.163.com/song?id=' + id);
+      const t = r.body.match(/<title>([^<]+)<\/title>/);
+      if (t) {
+        const clean = t[1]
+          .replace(/\s*-\s*单曲\s*-\s*网易云音乐\s*$/, '')
+          .replace(/\s*-\s*网易云音乐\s*$/, '');
+        const parts = clean.split(' - ');
+        title = parts[0] || '未知歌曲';
+        artist = parts.slice(1).join(' - ');
+      }
+    } catch (e) { }
+    let lyric = '';
+    try {
+      const r = await musicHttpGet('https://music.163.com/api/song/lyric?id=' + id + '&lv=1&kv=1&tv=-1', {
+        'Referer': 'https://music.163.com/',
+      });
+      lyric = (r.json && r.json.lrc && r.json.lrc.lyric) || '';
+    } catch (e) { }
+    return { ok: true, type: 'netease', id, title, artist, url, lyric, needCookie: !url };
+  }
+
+  // B 站：view 拿 cid/标题/UP主 → playurl 拿音频流（匿名可用）
+  async function resolveBili(link) {
+    let finalLink = String(link).trim();
+    if (/b23\.tv\//.test(finalLink)) {
+      try {
+        const r = await musicHttpGet(finalLink);
+        if (r.headers['location']) finalLink = r.headers['location'];
+      } catch (e) { }
+    }
+    const bv = finalLink.match(/video\/(BV[0-9A-Za-z]+)/);
+    const av = finalLink.match(/video\/av(\d+)/);
+    if (!bv && !av) return { ok: false, error: '无法识别的 B 站链接' };
+    let title = '未知视频', artist = '', cid = '', bvid = bv ? bv[1] : '';
+    try {
+      const q = bv ? 'bvid=' + bv[1] : 'aid=' + av[1];
+      const r = await musicHttpGet('https://api.bilibili.com/x/web-interface/view?' + q);
+      const d = r.json && r.json.data;
+      if (d) {
+        cid = d.cid;
+        title = d.title || '未知视频';
+        artist = (d.owner && d.owner.name) || '';
+        if (!bvid && d.bvid) bvid = d.bvid;
+      }
+    } catch (e) { }
+    if (!cid) return { ok: false, error: '无法获取 B 站视频信息' };
+    let url = '';
+    try {
+      const r = await musicHttpGet('https://api.bilibili.com/x/player/playurl?bvid=' + bvid + '&cid=' + cid + '&fnval=16', {
+        'Referer': 'https://www.bilibili.com/',
+      });
+      const audio = r.json && r.json.data && r.json.data.dash && r.json.data.dash.audio;
+      if (audio && audio.length) url = audio[audio.length - 1].baseUrl || '';
+    } catch (e) { }
+    return { ok: true, type: 'bili', id: bvid, title, artist, url, lyric: '', needCookie: false };
+  }
+
+  // 统一入口：网易云单曲 / B 站视频 / 音频直链
+  async function resolveMusicLink(link) {
+    const s = String(link).trim();
+    const netease = s.match(/music\.163\.com\/(?:#\/)?song\?id=(\d+)/) || s.match(/music\.163\.com\/song\/(\d+)/) || s.match(/163cn\.tv\/song\/?(\d+)/);
+    if (netease) return await resolveNetease(netease[1]);
+    if (/bilibili\.com\/video\//.test(s) || /b23\.tv\//.test(s)) return await resolveBili(s);
+    if (/^https?:\/\/.+\.(mp3|m4a|flac|wav|ogg|aac)(\?.*)?$/i.test(s)) {
+      const name = decodeURIComponent(s.split('/').pop().split('?')[0] || '').replace(/\.(mp3|m4a|flac|wav|ogg|aac)$/i, '');
+      return { ok: true, type: 'direct', id: 'd' + Date.now(), title: name || '音频直链', artist: '', url: s, lyric: '', needCookie: false };
+    }
+    return { ok: false, error: '暂不支持该链接（支持：网易云单曲、B站视频、音频直链 mp3/m4a/flac）' };
+  }
+
+  function loadMusicPlaylist() {
+    try {
+      const v = JSON.parse(fs.readFileSync(MUSIC_FILE, 'utf8'));
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function saveMusicPlaylist(list) {
+    try { fs.writeFileSync(MUSIC_FILE, JSON.stringify(list, null, 2), 'utf8'); } catch (e) { }
+  }
+
+  ipcMain.handle('music:resolve', async (e, link) => {
+    if (!link || typeof link !== 'string') return { ok: false, error: '链接为空' };
+    try { return await resolveMusicLink(link); }
+    catch (err) { return { ok: false, error: (err && err.message) || '解析失败' }; }
+  });
+  ipcMain.handle('music:list', () => loadMusicPlaylist());
+  ipcMain.handle('music:save', (e, list) => {
+    saveMusicPlaylist(list);
+    return { ok: true };
+  });
+  ipcMain.handle('music:config-get', () => loadMusicConfig());
+  ipcMain.handle('music:config-set', (e, cfg) => {
+    saveMusicConfig(cfg);
+    return { ok: true };
   });
 
   ipcMain.handle('app:log-tail', () => logTail());
