@@ -1,0 +1,22 @@
+{
+  "name": "dsh-lyric-sidebar",
+  "version": "0.1.0",
+  "description": "歌词侧边栏卡片：在 DeepSeek Harness 侧边栏（工作区下方、设置上方）显示客户端播放器的歌词，背景与工作区栏一致。",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "license": "MIT"
+}

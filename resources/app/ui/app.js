@@ -873,8 +873,21 @@ start();
 
 // ================= 音乐播放器（网易云链接 / 歌单 / 顶栏歌词） =================
 const musicAudio = $('musicAudio');
-const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false };
+const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false, singleText: '' };
 let mPanelOpen = false;
+
+// 把歌词推送给 DSH 网页（侧边栏歌词卡插件接收）
+function mPushLyric() {
+  const frame = $('host');
+  if (!frame || !frame.contentWindow) return;
+  frame.contentWindow.postMessage({
+    type: 'dsh-lyric',
+    show: $('lyricArea').classList.contains('show'),
+    lines: mState.lrc.map((l) => l.c),
+    index: mState.lrcIdx,
+    single: mState.singleText || '',
+  }, '*');
+}
 
 function mParseLrc(text) {
   const out = [];
@@ -905,6 +918,7 @@ function mRenderLrc() {
     div.textContent = l.c;
     move.appendChild(div);
   }
+  mState.singleText = '';
   mUpdateLrcHighlight();
 }
 function mUpdateLrcHighlight() {
@@ -916,6 +930,7 @@ function mUpdateLrcHighlight() {
     if (lines[i].classList.contains('active') !== active) lines[i].classList.toggle('active', active);
   }
   if (idx >= 0) move.style.transform = 'translateY(' + (-((idx - 2) * 24)) + 'px)';
+  mPushLyric();
 }
 // 单行模式（无歌词 / 加载 / 提示）
 function mShowLyricSingle(text) {
@@ -926,10 +941,14 @@ function mShowLyricSingle(text) {
   div.textContent = text || '';
   move.appendChild(div);
   move.style.transform = 'translateY(0)';
+  mState.singleText = text || '';
   $('lyricArea').classList.add('show');
+  mPushLyric();
 }
 function mHideLyric() {
   $('lyricArea').classList.remove('show');
+  mState.singleText = '';
+  mPushLyric();
 }
 
 function mRenderList() {
