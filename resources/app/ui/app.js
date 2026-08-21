@@ -966,6 +966,20 @@ function mUpdateNow() {
     ? (mState.playing ? '♪ ' : '') + (item.title || '未知歌曲') + (item.artist ? ' - ' + item.artist : '')
     : '未在播放';
   $('mPlayBtn').textContent = mState.playing ? '⏸ 暂停' : '▶ 播放';
+  mUpdateTitleInfo();
+}
+
+// 顶栏信息条：播放时显示歌名（渐变），空闲时显示服务状态装饰
+function mUpdateTitleInfo() {
+  const el = $('titleInfo');
+  if (!el) return;
+  const item = mState.list[mState.index];
+  if (item && mState.playing) {
+    el.innerHTML = '<span class="ti-song">♪ ' + esc(item.title || '未知歌曲') +
+      (item.artist ? ' - ' + esc(item.artist) : '') + '</span>';
+  } else {
+    el.innerHTML = '<span class="dot"></span><span class="ti-text">DSH 服务运行中</span>';
+  }
 }
 
 async function mPlayAt(i) {
