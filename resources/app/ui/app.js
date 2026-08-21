@@ -1148,3 +1148,35 @@ document.addEventListener('click', (e) => {
   tick();
   setInterval(tick, 15000);
 })();
+
+// 文件树 / 编辑器 分隔条：拖动调节两边宽度（记忆上次宽度）
+(function initSplitter() {
+  const splitter = $('splitter');
+  const tree = $('tree-pane');
+  if (!splitter || !tree) return;
+  try {
+    const saved = localStorage.getItem('dsh-tree-width');
+    if (saved) tree.style.width = Math.min(Math.max(Number(saved), 160), 700) + 'px';
+  } catch (e) { }
+  let dragging = false, startX = 0, startW = 0;
+  splitter.addEventListener('mousedown', (e) => {
+    dragging = true;
+    startX = e.clientX;
+    startW = tree.getBoundingClientRect().width;
+    document.body.classList.add('resizing');
+    splitter.classList.add('dragging');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const w = Math.min(Math.max(startW + (e.clientX - startX), 160), 700);
+    tree.style.width = w + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove('resizing');
+    splitter.classList.remove('dragging');
+    try { localStorage.setItem('dsh-tree-width', String(tree.getBoundingClientRect().width)); } catch (e) { }
+  });
+})();
