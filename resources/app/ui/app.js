@@ -879,6 +879,7 @@ let mPanelOpen = false;
 function mParseLrc(text) {
   const out = [];
   const re = /\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+  const metaRe = /^(作词|作曲|编曲|制作人|和声编写|配唱|录音|混音|母带|监制|企划|统筹|封面|发行|出品|键盘|吉他|贝斯|鼓|弦乐|乐器|program|Program)[:：\s]/;
   for (const raw of String(text || '').split('\n')) {
     const times = [];
     let m;
@@ -887,19 +888,44 @@ function mParseLrc(text) {
       times.push(parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3] || '0') / 1000);
     }
     const content = raw.replace(/\[[^\]]*\]/g, '').trim();
-    if (!content) continue;
+    if (!content || metaRe.test(content)) continue;
     if (times.length) times.forEach((t) => out.push({ t, c: content }));
   }
   out.sort((a, b) => a.t - b.t);
   return out;
 }
 
-function mShowLyric(text) {
-  const line = $('lyricLine');
-  line.textContent = text || '';
-  line.classList.remove('lyric-pop');
-  void line.offsetWidth; // 强制重排，重放入场动画
-  line.classList.add('lyric-pop');
+// 多行歌词：渲染全部行，唱到哪行哪行高亮放大
+function mRenderLrc() {
+  const move = $('lyricMove');
+  move.innerHTML = '';
+  for (const l of mState.lrc) {
+    const div = document.createElement('div');
+    div.className = 'l-line';
+    div.textContent = l.c;
+    move.appendChild(div);
+  }
+  mUpdateLrcHighlight();
+}
+function mUpdateLrcHighlight() {
+  const move = $('lyricMove');
+  const lines = move.children;
+  const idx = mState.lrcIdx;
+  for (let i = 0; i < lines.length; i++) {
+    const active = i === idx;
+    if (lines[i].classList.contains('active') !== active) lines[i].classList.toggle('active', active);
+  }
+  if (idx >= 0) move.style.transform = 'translateY(' + (-((idx - 2) * 24)) + 'px)';
+}
+// 单行模式（无歌词 / 加载 / 提示）
+function mShowLyricSingle(text) {
+  const move = $('lyricMove');
+  move.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'l-line active';
+  div.textContent = text || '';
+  move.appendChild(div);
+  move.style.transform = 'translateY(0)';
   $('lyricArea').classList.add('show');
 }
 function mHideLyric() {
@@ -948,8 +974,7 @@ async function mPlayAt(i) {
   const item = mState.list[i];
   if (!item) return;
   mState.index = i;
-  $('titleText').style.display = 'none'; // 顶栏让位给歌词
-  mShowLyric('正在加载《' + (item.title || '') + '》…');
+  mShowLyricSingle('正在加载《' + (item.title || '') + '》…');
   let link;
   if (item.type === 'bili') link = 'https://www.bilibili.com/video/' + item.id;
   else if (item.type === 'direct') link = item.url;
@@ -959,7 +984,7 @@ async function mPlayAt(i) {
     const hint = (r && r.needCookie)
       ? '网易云音频需在「高级」里填入网易云 Cookie 后才能播放'
       : ((r && r.error) || '音频获取失败（可能受版权限制）');
-    mShowLyric('无法播放：' + hint);
+    mShowLyricSingle('无法播放：' + hint);
     return;
   }
   mState.lrc = mParseLrc(r.lyric);
@@ -968,9 +993,10 @@ async function mPlayAt(i) {
   mState.playing = true;
   mUpdateNow();
   mRenderList();
-  if (!r.lyric) mShowLyric('♪ ' + (r.title || item.title || ''));
+  if (mState.lrc.length) mRenderLrc();
+  else mShowLyricSingle('♪ ' + (r.title || item.title || ''));
   try { await musicAudio.play(); }
-  catch (e) { mShowLyric('播放失败（可能受版权或网络限制）'); }
+  catch (e) { mShowLyricSingle('播放失败（可能受版权或网络限制）'); }
 }
 
 function mTogglePlay() {
@@ -995,7 +1021,6 @@ function mStop() {
   mState.index = -1;
   mState.lrc = [];
   mHideLyric();
-  $('titleText').style.display = '';
   mUpdateNow();
   mRenderList();
 }
@@ -1013,7 +1038,7 @@ musicAudio.ontimeupdate = () => {
   }
   if (best !== mState.lrcIdx) {
     mState.lrcIdx = best;
-    mShowLyric(best >= 0 ? mState.lrc[best].c : '');
+    mUpdateLrcHighlight();
   }
 };
 musicAudio.onended = () => {
@@ -1022,7 +1047,7 @@ musicAudio.onended = () => {
 };
 musicAudio.onpause = () => { mState.playing = false; mUpdateNow(); };
 musicAudio.onplay = () => { mState.playing = true; mUpdateNow(); };
-musicAudio.onerror = () => { mShowLyric('播放出错（音频链接可能已失效）'); };
+musicAudio.onerror = () => { mShowLyricSingle('播放出错（音频链接可能已失效）'); };
 
 $('musicBtn').onclick = () => {
   mPanelOpen = !mPanelOpen;
@@ -1083,3 +1108,20 @@ $('mCookieSave').onclick = async () => {
   await window.dsh.musicConfigSet({ neteaseCookie: v });
   $('mCookieStatus').textContent = v ? '已保存 ✓ 下次播放网易云歌曲时生效' : '已清除 Cookie';
 };
+
+// 音量调节（记住上次的音量）
+(function initVolume() {
+  let vol = 0.8;
+  try { const saved = localStorage.getItem('dsh-music-vol'); if (saved != null) vol = Number(saved); } catch (e) { }
+  if (!(vol >= 0 && vol <= 1)) vol = 0.8;
+  musicAudio.volume = vol;
+  const pct = Math.round(vol * 100);
+  $('mVol').value = pct;
+  $('mVolPct').textContent = pct + '%';
+  $('mVol').addEventListener('input', () => {
+    const v = Number($('mVol').value) / 100;
+    musicAudio.volume = v;
+    $('mVolPct').textContent = Math.round(v * 100) + '%';
+    try { localStorage.setItem('dsh-music-vol', String(v)); } catch (e) { }
+  });
+})();

@@ -31,16 +31,25 @@
     #musicBtn svg { width: 14px; height: 14px; display: block; }
     #musicBtn:hover { background: #f2f4f7; }
     #musicBtn.active { background: #e8ecf2; color: #1f6fd6; }
-    #lyricArea { position: absolute; left: 50%; transform: translateX(-50%); top: 0;
-      height: 30px; max-width: 46%; display: none; align-items: center; justify-content: center;
-      -webkit-app-region: no-drag; pointer-events: none; overflow: hidden; z-index: 2; }
-    #lyricArea.show { display: flex; }
-    #lyricArea .lyric-line { font-size: 12px; font-weight: 500; white-space: nowrap;
-      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    #lyricArea { position: fixed; top: 36px; left: 50%; transform: translateX(-50%);
+      display: none; max-width: min(680px, 86vw); width: max-content;
+      padding: 10px 24px; background: rgba(255,255,255,0.74);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.9); border-radius: 16px;
+      box-shadow: 0 10px 34px rgba(20,30,60,0.14); z-index: 9980;
+      pointer-events: none; overflow: hidden; }
+    #lyricArea.show { display: block; }
+    #lyricLines { position: relative; height: 120px; overflow: hidden; }
+    #lyricMove { display: flex; flex-direction: column; align-items: center;
+      transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1); }
+    .l-line { font-size: 11.5px; line-height: 24px; white-space: nowrap;
+      color: rgba(60,68,82,0.34); transition: color 0.35s ease, font-size 0.35s ease,
+      transform 0.35s ease, opacity 0.35s ease; }
+    .l-line.active { font-size: 15px; font-weight: 700; color: transparent;
       background: linear-gradient(90deg, #3a7bd5, #8e54e9, #ff6f91, #3a7bd5);
       background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
-      color: transparent; animation: lyricFlow 6s linear infinite; }
-    #lyricArea .lyric-line.lyric-pop { animation: lyricFlow 6s linear infinite, lyricPop 0.45s ease; }
+      animation: lyricFlow 6s linear infinite;
+      text-shadow: 0 2px 10px rgba(93,130,255,0.28); transform: scale(1.05); }
     @keyframes lyricFlow { to { background-position: 300% 0; } }
     @keyframes lyricPop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -115,6 +124,11 @@
       letter-spacing: 1px; margin-bottom: 8px; }
     #musicPanel .m-now { font-size: 11.5px; color: #8a94a6; text-align: center; padding: 0 4px 2px;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #musicPanel .m-vol { display: flex; align-items: center; gap: 8px; padding: 0 6px 2px; }
+    #musicPanel .m-vol .m-vol-icon { font-size: 12px; opacity: 0.55; }
+    #musicPanel .m-vol input[type=range] { flex: 1; height: 4px; accent-color: #1f6fd6; cursor: pointer; }
+    #musicPanel .m-vol .m-vol-pct { font-size: 11.5px; color: #8a94a6; width: 36px; text-align: right;
+      font-variant-numeric: tabular-nums; }
     #musicPanel .m-ctl { display: flex; align-items: center; justify-content: center; gap: 10px; }
     #stage { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
       background: #fff; opacity: 0; transition: opacity 0.35s ease; }
@@ -344,7 +358,6 @@
   <div id="titlebar">
     <img src="icon.png" alt="" />
     <div class="t" id="titleText">DeepSeek Harness</div>
-    <div id="lyricArea"><span class="lyric-line" id="lyricLine"></span></div>
     <button id="musicBtn" title="音乐播放器" aria-label="音乐播放器">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
@@ -464,6 +477,11 @@
       <div class="hint" id="mCookieStatus">网易云音频需登录态：浏览器登录 music.163.com 后，从开发者工具复制 Cookie 填入即可解锁播放；B 站与直链无需此设置。</div>
     </div>
     <div class="card" style="border-bottom: 0; display: grid; gap: 6px;">
+      <div class="m-vol">
+        <span class="m-vol-icon">🔊</span>
+        <input type="range" id="mVol" min="0" max="100" value="80" />
+        <span class="m-vol-pct" id="mVolPct">80%</span>
+      </div>
       <div class="m-now" id="mNow">未在播放</div>
       <div class="m-ctl">
         <button class="mini-btn" id="mPrevBtn">⏮ 上一首</button>
@@ -473,6 +491,12 @@
     </div>
   </div>
   <audio id="musicAudio"></audio>
+
+  <div id="lyricArea">
+    <div id="lyricLines">
+      <div id="lyricMove"></div>
+    </div>
+  </div>
 
   <div id="boot">
     <div class="boot-orb a"></div>
