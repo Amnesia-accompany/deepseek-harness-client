@@ -32,10 +32,10 @@
     #musicBtn:hover { background: #f2f4f7; }
     #musicBtn.active { background: #e8ecf2; color: #1f6fd6; }
 
-    /* ---------- 顶栏信息条：播放信息 / 品牌状态装饰 ---------- */
+    /* ---------- 顶栏信息条：播放信息 / 品牌状态装饰 / 均衡器 / 时钟 ---------- */
     #titleInfo { position: absolute; left: 50%; transform: translateX(-50%); top: 0;
       height: 30px; display: flex; align-items: center; justify-content: center;
-      gap: 8px; max-width: 46%; overflow: hidden; white-space: nowrap;
+      gap: 8px; max-width: 52%; overflow: hidden; white-space: nowrap;
       -webkit-app-region: no-drag; pointer-events: none; z-index: 2; }
     #titleInfo .ti-song { font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
@@ -44,10 +44,29 @@
       color: transparent; animation: titleFlow 5s linear infinite; }
     #titleInfo .ti-text { font-size: 11px; color: rgba(60,68,82,0.55);
       letter-spacing: 0.04em; }
+    #titleInfo .ti-sep { font-size: 10px; color: rgba(60,68,82,0.35); }
     #titleInfo .dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
       box-shadow: 0 0 6px rgba(34,197,94,0.7); animation: dotPulse 2.2s ease-in-out infinite; }
+    #titleClock { font-size: 11px; color: rgba(60,68,82,0.6); font-weight: 600;
+      font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+    /* 均衡器跳动 */
+    #titleInfo .ti-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+    #titleInfo .eq-bar { display: inline-block; width: 2px; border-radius: 1px;
+      background: linear-gradient(180deg, #3964fe, #a855f7);
+      transform-origin: bottom; animation: eqJump 0.9s ease-in-out infinite; }
+    #titleInfo .eq-bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+    #titleInfo .eq-bar:nth-child(2) { height: 10px; animation-delay: 0.22s; }
+    #titleInfo .eq-bar:nth-child(3) { height: 7px; animation-delay: 0.38s; }
+    #titleInfo .eq-bar:nth-child(4) { height: 9px; animation-delay: 0.13s; }
+    /* 播放进度条 */
+    #titleProgress { position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+      pointer-events: none; z-index: 3; }
+    #titleProgress .tp-fill { display: block; height: 100%; width: 0%;
+      background: linear-gradient(90deg, #3964fe, #a855f7, #ec4899);
+      transition: width 0.3s linear; }
     @keyframes titleFlow { to { background-position: 200% 0; } }
     @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+    @keyframes eqJump { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
 
     /* ---------- API Key / 余额面板 ---------- */
     #panel { position: fixed; top: 34px; right: 10px; width: 330px;
@@ -354,7 +373,11 @@
   <div id="titlebar">
     <img src="icon.png" alt="" />
     <div class="t" id="titleText">DeepSeek Harness</div>
-    <div id="titleInfo"><span class="dot"></span><span class="ti-text">DSH 服务运行中</span></div>
+    <div id="titleInfo">
+      <span id="titleStatus"><span class="dot"></span><span class="ti-text">DSH 服务运行中</span></span>
+      <span class="ti-sep">·</span>
+      <span id="titleClock">--:--</span>
+    </div>
     <button id="musicBtn" title="音乐播放器" aria-label="音乐播放器">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="10" fill="#1a1a1a"/>
@@ -371,6 +394,7 @@
       </svg>
     </button>
     <div class="spacer"></div>
+    <div id="titleProgress"><span class="tp-fill" id="titleProgressFill"></span></div>
   </div>
 
   <!-- 选项卡栏 -->

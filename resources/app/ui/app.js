@@ -975,7 +975,8 @@ function mUpdateTitleInfo() {
   if (!el) return;
   const item = mState.list[mState.index];
   if (item && mState.playing) {
-    el.innerHTML = '<span class="ti-song">♪ ' + esc(item.title || '未知歌曲') +
+    el.innerHTML = '<span class="ti-eq"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>' +
+      '<span class="ti-song">♪ ' + esc(item.title || '未知歌曲') +
       (item.artist ? ' - ' + esc(item.artist) : '') + '</span>';
   } else {
     el.innerHTML = '<span class="dot"></span><span class="ti-text">DSH 服务运行中</span>';
@@ -1033,6 +1034,8 @@ function mStop() {
   mState.index = -1;
   mState.lrc = [];
   mHideLyric();
+  const fill = $('titleProgressFill');
+  if (fill) fill.style.width = '0%';
   mUpdateNow();
   mRenderList();
 }
@@ -1051,6 +1054,12 @@ musicAudio.ontimeupdate = () => {
   if (best !== mState.lrcIdx) {
     mState.lrcIdx = best;
     mUpdateLrcHighlight();
+  }
+  // 顶栏进度条
+  const fill = $('titleProgressFill');
+  if (fill) {
+    const dur = musicAudio.duration || 0;
+    fill.style.width = (dur ? (musicAudio.currentTime / dur) * 100 : 0) + '%';
   }
 };
 musicAudio.onended = () => {
@@ -1126,4 +1135,16 @@ document.addEventListener('click', (e) => {
     $('mVolPct').textContent = Math.round(v * 100) + '%';
     try { localStorage.setItem('dsh-music-vol', String(v)); } catch (e) { }
   });
+})();
+
+// 顶栏时钟（HH:MM，每 15 秒刷新一次）
+(function initClock() {
+  const el = $('titleClock');
+  if (!el) return;
+  const tick = () => {
+    const d = new Date();
+    el.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  };
+  tick();
+  setInterval(tick, 15000);
 })();
