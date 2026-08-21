@@ -167,11 +167,11 @@
     /* ---------- 三栏主体（对话模式全屏，文件模式才出现树） ---------- */
     #main { position: fixed; top: 58px; left: 0; right: 0; bottom: 0;
       display: flex; -webkit-app-region: no-drag; }
-    #tree-pane { width: 250px; min-width: 160px; background: #fafbfc;
+    #tree-pane { width: 250px; min-width: 160px; flex-shrink: 0; background: #fafbfc;
       border-right: 1px solid #e4e7ec; display: none; flex-direction: column; }
     #content-pane { flex: 1 1 42%; min-width: 260px; display: none;
       flex-direction: column; border-right: 1px solid #e4e7ec; background: #fff; }
-    #right-pane { flex: 1 1 58%; position: relative; background: #fff; }
+    #right-pane { flex: 1 1 58%; min-width: 360px; position: relative; background: #fff; }
     /* 分隔条（文件树|编辑器、编辑器|对话 均可拖动调宽） */
     #splitter, #splitter2 { flex: none; width: 5px; cursor: col-resize; position: relative;
       background: transparent; display: none; z-index: 5; }
