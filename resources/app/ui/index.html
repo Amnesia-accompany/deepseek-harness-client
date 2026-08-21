@@ -172,14 +172,16 @@
     #content-pane { flex: 1 1 42%; min-width: 260px; display: none;
       flex-direction: column; border-right: 1px solid #e4e7ec; background: #fff; }
     #right-pane { flex: 1 1 58%; position: relative; background: #fff; }
-    /* 文件树 / 编辑器 分隔条（可拖动调宽） */
-    #splitter { flex: none; width: 5px; cursor: col-resize; position: relative;
+    /* 分隔条（文件树|编辑器、编辑器|对话 均可拖动调宽） */
+    #splitter, #splitter2 { flex: none; width: 5px; cursor: col-resize; position: relative;
       background: transparent; display: none; z-index: 5; }
     body.view-files #splitter { display: block; }
-    #splitter::after { content: ""; position: absolute; top: 0; bottom: 0; left: 2px;
+    body.view-files #content-pane.open + #splitter2 { display: block; }
+    #splitter::after, #splitter2::after { content: ""; position: absolute; top: 0; bottom: 0; left: 2px;
       width: 1px; background: transparent;
       transition: background 0.15s ease, width 0.15s ease, left 0.15s ease; }
-    #splitter:hover::after, #splitter.dragging::after { background: #1f6fd6; width: 3px; left: 1px; }
+    #splitter:hover::after, #splitter.dragging::after,
+    #splitter2:hover::after, #splitter2.dragging::after { background: #1f6fd6; width: 3px; left: 1px; }
     body.resizing { cursor: col-resize; user-select: none; }
     body.view-files #tree-pane { display: flex; }
     body.view-files #content-pane.open { display: flex; }
@@ -241,6 +243,11 @@
       overflow: auto; padding: 12px 14px; }
     #editor::selection { background: rgba(31,111,214,0.25); color: transparent; }
     #editor::placeholder { color: #b0b8c4; }
+    /* 编辑器滚动条美化 */
+    #editor::-webkit-scrollbar { width: 8px; height: 8px; }
+    #editor::-webkit-scrollbar-thumb { background: #d0d7e2; border-radius: 4px; }
+    #editor::-webkit-scrollbar-thumb:hover { background: #b6c0cf; }
+    #editor::-webkit-scrollbar-track { background: transparent; }
     .tok-kw { color: #0000ff; }
     .tok-str { color: #a31515; }
     .tok-com { color: #008000; font-style: italic; }
@@ -470,6 +477,7 @@
       </div>
       <div id="editorBar"><span id="editorPath"></span><span id="editorDirty"></span></div>
     </div>
+    <div id="splitter2"></div>
     <div id="right-pane">
       <div id="stage"><iframe id="host"></iframe></div>
     </div>

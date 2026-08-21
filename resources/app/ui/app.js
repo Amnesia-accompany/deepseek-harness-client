@@ -1149,34 +1149,58 @@ document.addEventListener('click', (e) => {
   setInterval(tick, 15000);
 })();
 
-// 文件树 / 编辑器 分隔条：拖动调节两边宽度（记忆上次宽度）
-(function initSplitter() {
-  const splitter = $('splitter');
-  const tree = $('tree-pane');
-  if (!splitter || !tree) return;
+// 分隔条通用拖动（rAF 平滑；flex 模式用于 flex-basis 布局的列）
+function makeSplitter(splitter, target, opts) {
+  const key = opts.key, min = opts.min, max = opts.max
+  const applyW = (w) => {
+    const v = Math.min(Math.max(w, min), max)
+    if (opts.flex) target.style.flex = '0 0 ' + v + 'px'
+    else target.style.width = v + 'px'
+  }
   try {
-    const saved = localStorage.getItem('dsh-tree-width');
-    if (saved) tree.style.width = Math.min(Math.max(Number(saved), 160), 700) + 'px';
+    const saved = localStorage.getItem(key)
+    if (saved) applyW(Number(saved))
   } catch (e) { }
-  let dragging = false, startX = 0, startW = 0;
+  let dragging = false, startX = 0, startW = 0, latestX = 0, raf = 0
   splitter.addEventListener('mousedown', (e) => {
-    dragging = true;
-    startX = e.clientX;
-    startW = tree.getBoundingClientRect().width;
-    document.body.classList.add('resizing');
-    splitter.classList.add('dragging');
-    e.preventDefault();
-  });
+    dragging = true
+    startX = e.clientX
+    latestX = e.clientX
+    startW = target.getBoundingClientRect().width
+    document.body.classList.add('resizing')
+    splitter.classList.add('dragging')
+    e.preventDefault()
+  })
   document.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const w = Math.min(Math.max(startW + (e.clientX - startX), 160), 700);
-    tree.style.width = w + 'px';
-  });
+    if (!dragging) return
+    latestX = e.clientX
+    if (raf) return
+    raf = requestAnimationFrame(() => {
+      raf = 0
+      applyW(startW + (latestX - startX))
+    })
+  })
   document.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove('resizing');
-    splitter.classList.remove('dragging');
-    try { localStorage.setItem('dsh-tree-width', String(tree.getBoundingClientRect().width)); } catch (e) { }
-  });
-})();
+    if (!dragging) return
+    dragging = false
+    document.body.classList.remove('resizing')
+    splitter.classList.remove('dragging')
+    try { localStorage.setItem(key, String(target.getBoundingClientRect().width)) } catch (e) { }
+  })
+}
+
+// 文件树 | 编辑器 分隔条（记忆宽度）
+makeSplitter($('splitter'), $('tree-pane'), { key: 'dsh-tree-width', min: 160, max: 700 })
+// 编辑器 | 对话 分隔条（记忆宽度）
+makeSplitter($('splitter2'), $('content-pane'), { key: 'dsh-content-width', min: 260, max: 1400, flex: true })
+
+// 编辑器 Tab 缩进（插入 2 空格）
+$('editor').addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return
+  e.preventDefault()
+  const el = e.target
+  const start = el.selectionStart, end = el.selectionEnd
+  el.value = el.value.slice(0, start) + '  ' + el.value.slice(end)
+  el.selectionStart = el.selectionEnd = start + 2
+  el.dispatchEvent(new Event('input'))
+})
