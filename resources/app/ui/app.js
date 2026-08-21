@@ -901,8 +901,10 @@ function mUpdateLyricDom() {
   const next = $('lyricNext');
   const idx = mState.lrcIdx;
   const hasLrc = mState.lrc.length > 0;
-  now.textContent = hasLrc ? (idx >= 0 ? mState.lrc[idx].c : '') : (mState.singleText || '');
-  next.textContent = hasLrc && idx >= 0 && idx + 1 < mState.lrc.length ? mState.lrc[idx + 1].c : '';
+  // 前奏/间奏未到时：预位显示第一句歌词（等待唱）
+  const cur = hasLrc ? (idx >= 0 ? idx : 0) : -1;
+  now.textContent = hasLrc ? mState.lrc[cur].c : (mState.singleText || '');
+  next.textContent = hasLrc && cur + 1 < mState.lrc.length ? mState.lrc[cur + 1].c : '';
   now.classList.remove('l-pop');
   next.classList.remove('l-pop2');
   void now.offsetWidth;
