@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const https = require('https');
+const crypto = require('crypto');
 
 // ---------------- 路径 ----------------
 const ROOT = path.dirname(path.dirname(app.getAppPath())); // 客户端根目录（resources 的上一级）
@@ -462,6 +463,56 @@ function initIpc() {
     });
   }
 
+  function musicHttpPost(url, formBody, extraHeaders) {
+    return new Promise((resolve, reject) => {
+      const headers = Object.assign({
+        'User-Agent': MUSIC_UA,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(formBody),
+      }, extraHeaders || {});
+      const req = https.request(url, { method: 'POST', headers, timeout: 15000 }, (res) => {
+        let body = '';
+        res.on('data', (d) => { body += d; if (body.length > 5e6) req.destroy(); });
+        res.on('end', () => {
+          let json = null;
+          try { json = JSON.parse(body); } catch (e) { }
+          resolve({ status: res.statusCode, body, json });
+        });
+      });
+      req.on('error', () => reject(new Error('网络错误')));
+      req.on('timeout', () => { req.destroy(); reject(new Error('请求超时')); });
+      req.end(formBody);
+    });
+  }
+
+  // ---- 网易云 weapi 加密（NeteaseCloudMusicApi 公开算法） ----
+  const W_MODULUS = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7';
+  const W_NONCE = '0CoJUm6Qyw8W8jud';
+  const W_PUB = '010001';
+  function wAesEncrypt(text, key) {
+    const cipher = crypto.createCipheriv('aes-128-cbc', key, '0102030405060708');
+    return cipher.update(text, 'utf8', 'base64') + cipher.final('base64');
+  }
+  function wRsaEncrypt(orig) {
+    const buffer = Buffer.from(orig, 'utf8').reverse();
+    const mod = BigInt('0x' + W_MODULUS);
+    let result = 1n;
+    let base = BigInt('0x' + buffer.toString('hex')) % mod;
+    let exponent = BigInt('0x' + W_PUB);
+    while (exponent > 0n) {
+      if (exponent & 1n) result = (result * base) % mod;
+      base = (base * base) % mod;
+      exponent >>= 1n;
+    }
+    return result.toString(16).padStart(256, '0');
+  }
+  function weapiEncrypt(object) {
+    const text = JSON.stringify(object);
+    const secretKey = crypto.randomBytes(16).toString('hex').slice(0, 16);
+    const params = wAesEncrypt(wAesEncrypt(text, W_NONCE), secretKey);
+    return { params, encSecKey: wRsaEncrypt(secretKey) };
+  }
+
   function loadMusicConfig() {
     try { return JSON.parse(fs.readFileSync(MUSIC_CONFIG, 'utf8')) || {}; } catch (e) { return {}; }
   }
@@ -469,16 +520,22 @@ function initIpc() {
     try { fs.writeFileSync(MUSIC_CONFIG, JSON.stringify(cfg || {}, null, 2), 'utf8'); } catch (e) { }
   }
 
-  // 网易云：标题 + 歌词（匿名可用）；音频需要登录 Cookie（MUSIC_U）
+  // 网易云：标题 + 歌词（匿名可用）；音频走 weapi 加密接口（需登录 Cookie）
   async function resolveNetease(id) {
     const cfg = loadMusicConfig();
     const extraCookie = (cfg.neteaseCookie && String(cfg.neteaseCookie).trim()) || '';
     let url = '';
     try {
-      const r = await musicHttpGet('https://music.163.com/api/song/enhance/player/url?ids=[' + id + ']', {
-        'Referer': 'https://music.163.com/',
-        'Cookie': 'os=pc; appver=2.9.7;' + (extraCookie ? ' ' + extraCookie : ''),
-      });
+      const enc = weapiEncrypt({ ids: '[' + id + ']', level: 'standard', encodeType: 'aac' });
+      const r = await musicHttpPost(
+        'https://music.163.com/weapi/song/enhance/player/url/v1',
+        'params=' + encodeURIComponent(enc.params) + '&encSecKey=' + enc.encSecKey,
+        {
+          'Cookie': extraCookie || 'os=pc; appver=2.9.7;',
+          'Referer': 'https://music.163.com/',
+          'os': 'pc',
+        },
+      );
       const u = r.json && r.json.data && r.json.data[0] && r.json.data[0].url;
       if (u) url = u;
     } catch (e) { }
