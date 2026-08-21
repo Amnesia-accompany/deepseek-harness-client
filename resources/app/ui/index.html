@@ -34,19 +34,19 @@
 
     /* ---------- 顶栏歌词：两行错位（当前句上偏左，下一句下偏右，垂直居中） ---------- */
     #lyricArea { position: absolute; left: 50%; transform: translateX(-50%); top: 0;
-      height: 30px; width: 260px; max-width: 46%; display: none;
+      height: 30px; width: 380px; max-width: 46%; display: none;
       flex-direction: column; justify-content: center;
       overflow: hidden; -webkit-app-region: no-drag; pointer-events: none; z-index: 2; }
     #lyricArea.show { display: flex; }
     #lyricArea .l-now { text-align: left; font-size: 13.5px; line-height: 15px;
       font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; max-width: 100%;
-      overflow: hidden; text-overflow: ellipsis;
+      overflow: hidden; text-overflow: ellipsis; padding-left: 10px;
       background: linear-gradient(90deg, #3964fe, #a855f7, #ec4899, #3964fe);
       background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
       color: transparent; animation: lyricFlow 4s linear infinite; }
     #lyricArea .l-next { text-align: right; font-size: 12.5px; line-height: 13px;
       font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; max-width: 100%;
-      overflow: hidden; text-overflow: ellipsis; opacity: 0.9;
+      overflow: hidden; text-overflow: ellipsis; padding-right: 10px; opacity: 0.9;
       background: linear-gradient(90deg, #3964fe, #a855f7, #ec4899, #3964fe);
       background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
       color: transparent; animation: lyricFlow 4s linear infinite; }
