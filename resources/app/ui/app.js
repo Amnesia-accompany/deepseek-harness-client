@@ -1149,7 +1149,7 @@ document.addEventListener('click', (e) => {
   setInterval(tick, 15000);
 })();
 
-// 分隔条通用拖动（rAF 平滑；flex 模式用于 flex-basis 布局的列）
+// 分隔条通用拖动（Pointer Capture 锁定指针，穿过 iframe 也不丢事件；rAF 平滑）
 function makeSplitter(splitter, target, opts) {
   const key = opts.key, min = opts.min, max = opts.max
   const applyW = (w) => {
@@ -1162,16 +1162,17 @@ function makeSplitter(splitter, target, opts) {
     if (saved) applyW(Number(saved))
   } catch (e) { }
   let dragging = false, startX = 0, startW = 0, latestX = 0, raf = 0
-  splitter.addEventListener('mousedown', (e) => {
+  splitter.addEventListener('pointerdown', (e) => {
     dragging = true
     startX = e.clientX
     latestX = e.clientX
     startW = target.getBoundingClientRect().width
     document.body.classList.add('resizing')
     splitter.classList.add('dragging')
+    try { splitter.setPointerCapture(e.pointerId) } catch (err) { }
     e.preventDefault()
   })
-  document.addEventListener('mousemove', (e) => {
+  splitter.addEventListener('pointermove', (e) => {
     if (!dragging) return
     latestX = e.clientX
     if (raf) return
@@ -1180,13 +1181,17 @@ function makeSplitter(splitter, target, opts) {
       applyW(startW + (latestX - startX))
     })
   })
-  document.addEventListener('mouseup', () => {
+  const endDrag = (e) => {
     if (!dragging) return
     dragging = false
     document.body.classList.remove('resizing')
     splitter.classList.remove('dragging')
-    try { localStorage.setItem(key, String(target.getBoundingClientRect().width)) } catch (e) { }
-  })
+    if (e && e.pointerId != null) { try { splitter.releasePointerCapture(e.pointerId) } catch (err) { } }
+    try { localStorage.setItem(key, String(target.getBoundingClientRect().width)) } catch (err) { }
+  }
+  splitter.addEventListener('pointerup', endDrag)
+  splitter.addEventListener('pointercancel', endDrag)
+  splitter.addEventListener('lostpointercapture', endDrag)
 }
 
 // 文件树 | 编辑器 分隔条（记忆宽度）
