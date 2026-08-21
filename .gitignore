@@ -34,3 +34,6 @@ data/icon.ico
 .dsh-*/
 *.log
 desktop-shot.png
+
+data/music-config.json
+data/music-playlist.json
