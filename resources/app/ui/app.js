@@ -873,8 +873,22 @@ start();
 
 // ================= 音乐播放器（网易云链接 / 歌单 / 顶栏歌词） =================
 const musicAudio = $('musicAudio');
-const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false, singleText: '' };
+const mState = { list: [], index: -1, lrc: [], lrcIdx: -1, playing: false, singleText: '', lyricShown: false };
 let mPanelOpen = false;
+
+// 把歌词推送给 DSH 网页（侧边栏多行歌词卡插件接收；前奏未到时预位第一句）
+function mPushLyric() {
+  const frame = $('host');
+  if (!frame || !frame.contentWindow) return;
+  const idx = mState.lrcIdx >= 0 ? mState.lrcIdx : (mState.lrc.length ? 0 : -1);
+  frame.contentWindow.postMessage({
+    type: 'dsh-lyric',
+    show: mState.lyricShown,
+    lines: mState.lrc.map((l) => l.c),
+    index: idx,
+    single: mState.singleText || '',
+  }, '*');
+}
 
 function mParseLrc(text) {
   const out = [];
@@ -895,37 +909,25 @@ function mParseLrc(text) {
   return out;
 }
 
-// 顶栏歌词：当前句（前，渐变大号） + 下一句（后，灰色错位）两列
-function mUpdateLyricDom() {
-  const now = $('lyricNow');
-  const next = $('lyricNext');
-  const idx = mState.lrcIdx;
-  const hasLrc = mState.lrc.length > 0;
-  // 前奏/间奏未到时：预位显示第一句歌词（等待唱）
-  const cur = hasLrc ? (idx >= 0 ? idx : 0) : -1;
-  now.textContent = hasLrc ? mState.lrc[cur].c : (mState.singleText || '');
-  next.textContent = hasLrc && cur + 1 < mState.lrc.length ? mState.lrc[cur + 1].c : '';
-  now.classList.remove('l-pop');
-  next.classList.remove('l-pop2');
-  void now.offsetWidth;
-  now.classList.add('l-pop');
-  next.classList.add('l-pop2');
-  $('lyricArea').classList.add('show');
-}
+// 多行歌词：渲染交给 DSH 侧边栏歌词卡（postMessage 推送）
 function mRenderLrc() {
   mState.singleText = '';
-  mUpdateLyricDom();
+  mState.lyricShown = true;
+  mPushLyric();
 }
 function mUpdateLrcHighlight() {
-  mUpdateLyricDom();
+  mPushLyric();
 }
 // 单行模式（无歌词 / 加载 / 提示）
 function mShowLyricSingle(text) {
   mState.singleText = text || '';
-  mUpdateLyricDom();
+  mState.lyricShown = true;
+  mPushLyric();
 }
 function mHideLyric() {
-  $('lyricArea').classList.remove('show');
+  mState.lyricShown = false;
+  mState.singleText = '';
+  mPushLyric();
 }
 
 function mRenderList() {
