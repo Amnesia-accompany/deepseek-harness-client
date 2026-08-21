@@ -32,21 +32,21 @@
     #musicBtn:hover { background: #f2f4f7; }
     #musicBtn.active { background: #e8ecf2; color: #1f6fd6; }
 
-    /* ---------- 顶栏歌词：两行错位（当前句上、偏左；下一句下、偏右） ---------- */
+    /* ---------- 顶栏歌词：两行错位（当前句上偏左，下一句下偏右，垂直居中） ---------- */
     #lyricArea { position: absolute; left: 50%; transform: translateX(-50%); top: 0;
-      height: 30px; width: max-content; max-width: 46%; display: none;
-      flex-direction: column; align-items: center; justify-content: center;
+      height: 30px; width: 260px; max-width: 46%; display: none;
+      flex-direction: column; justify-content: center;
       overflow: hidden; -webkit-app-region: no-drag; pointer-events: none; z-index: 2; }
     #lyricArea.show { display: flex; }
-    #lyricArea .l-next { align-self: flex-end; font-size: 12.5px; line-height: 14px;
-      font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; max-width: 100%;
-      overflow: hidden; text-overflow: ellipsis; padding-right: 6px; opacity: 0.9;
+    #lyricArea .l-now { text-align: left; font-size: 13.5px; line-height: 15px;
+      font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; max-width: 100%;
+      overflow: hidden; text-overflow: ellipsis;
       background: linear-gradient(90deg, #3964fe, #a855f7, #ec4899, #3964fe);
       background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
       color: transparent; animation: lyricFlow 4s linear infinite; }
-    #lyricArea .l-now { align-self: flex-start; font-size: 13.5px; line-height: 16px;
-      font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; max-width: 100%;
-      overflow: hidden; text-overflow: ellipsis; padding-left: 6px;
+    #lyricArea .l-next { text-align: right; font-size: 12.5px; line-height: 13px;
+      font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; max-width: 100%;
+      overflow: hidden; text-overflow: ellipsis; opacity: 0.9;
       background: linear-gradient(90deg, #3964fe, #a855f7, #ec4899, #3964fe);
       background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
       color: transparent; animation: lyricFlow 4s linear infinite; }
@@ -369,13 +369,16 @@
     <img src="icon.png" alt="" />
     <div class="t" id="titleText">DeepSeek Harness</div>
     <div id="lyricArea">
-      <span class="l-next" id="lyricNext"></span>
       <span class="l-now" id="lyricNow"></span>
+      <span class="l-next" id="lyricNext"></span>
     </div>
     <button id="musicBtn" title="音乐播放器" aria-label="音乐播放器">
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10.5" fill="#d43c33"/>
-        <path d="M13.9 5.6v8.05a3.15 3.15 0 1 1-1.55-2.73V8.1l3.9-1.07v3.32a3.15 3.15 0 1 1-1.55-2.73V6.05L13.9 5.6z" fill="#fff"/>
+        <circle cx="12" cy="12" r="10" fill="#1a1a1a"/>
+        <circle cx="12" cy="12" r="7" fill="none" stroke="#4a4a4a" stroke-width="1"/>
+        <circle cx="12" cy="12" r="4.2" fill="none" stroke="#4a4a4a" stroke-width="1"/>
+        <circle cx="12" cy="12" r="2.6" fill="#f5f5f5"/>
+        <circle cx="12" cy="12" r="0.9" fill="#1a1a1a"/>
       </svg>
     </button>
     <button id="keyBtn" title="API Key 与余额" aria-label="API Key 与余额">
