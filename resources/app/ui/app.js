@@ -1149,32 +1149,48 @@ document.addEventListener('click', (e) => {
   setInterval(tick, 15000);
 })();
 
-// 分隔条通用拖动（Pointer Capture 锁定指针，穿过 iframe 也不丢事件；rAF 平滑）
+// 分隔条通用拖动（Pointer Capture 锁定指针；rAF 平滑）
+// preview 模式：拖动中只移动预览竖线（iframe 零重排），松手才应用宽度
 function makeSplitter(splitter, target, opts) {
-  const key = opts.key, min = opts.min, max = opts.max
+  const key = opts.key, min = opts.min, max = opts.max, preview = !!opts.preview
   const applyW = (w) => {
     const v = Math.min(Math.max(w, min), max)
     if (opts.flex) target.style.flex = '0 0 ' + v + 'px'
     else target.style.width = v + 'px'
   }
+  const line = preview ? (() => {
+    const d = document.createElement('div')
+    d.style.cssText = 'position:fixed;top:0;bottom:0;width:2px;background:#1f6fd6;' +
+      'box-shadow:0 0 8px rgba(31,111,214,0.6);z-index:10000;pointer-events:none;display:none;'
+    document.body.appendChild(d)
+    return d
+  })() : null
   try {
     const saved = localStorage.getItem(key)
     if (saved) applyW(Number(saved))
   } catch (e) { }
-  let dragging = false, startX = 0, startW = 0, latestX = 0, raf = 0
+  let dragging = false, startX = 0, startW = 0, startRight = 0, latestX = 0, raf = 0
   splitter.addEventListener('pointerdown', (e) => {
     dragging = true
     startX = e.clientX
     latestX = e.clientX
     startW = target.getBoundingClientRect().width
+    startRight = target.getBoundingClientRect().right
     document.body.classList.add('resizing')
     splitter.classList.add('dragging')
+    if (line) line.style.left = startRight + 'px'
+    if (line) line.style.display = 'block'
     try { splitter.setPointerCapture(e.pointerId) } catch (err) { }
     e.preventDefault()
   })
   splitter.addEventListener('pointermove', (e) => {
     if (!dragging) return
     latestX = e.clientX
+    if (line) {
+      // 预览模式：只移动竖线，不触发任何布局
+      line.style.left = (startRight + (latestX - startX)) + 'px'
+      return
+    }
     if (raf) return
     raf = requestAnimationFrame(() => {
       raf = 0
@@ -1186,6 +1202,8 @@ function makeSplitter(splitter, target, opts) {
     dragging = false
     document.body.classList.remove('resizing')
     splitter.classList.remove('dragging')
+    if (line) line.style.display = 'none'
+    if (preview) applyW(startW + (latestX - startX))
     if (e && e.pointerId != null) { try { splitter.releasePointerCapture(e.pointerId) } catch (err) { } }
     try { localStorage.setItem(key, String(target.getBoundingClientRect().width)) } catch (err) { }
   }
@@ -1194,10 +1212,10 @@ function makeSplitter(splitter, target, opts) {
   splitter.addEventListener('lostpointercapture', endDrag)
 }
 
-// 文件树 | 编辑器 分隔条（记忆宽度）
+// 文件树 | 编辑器 分隔条（记忆宽度，实时）
 makeSplitter($('splitter'), $('tree-pane'), { key: 'dsh-tree-width', min: 160, max: 700 })
-// 编辑器 | 对话 分隔条（记忆宽度）
-makeSplitter($('splitter2'), $('content-pane'), { key: 'dsh-content-width', min: 260, max: 1400, flex: true })
+// 编辑器 | 对话 分隔条（记忆宽度，预览线模式：拖动丝滑，松手应用）
+makeSplitter($('splitter2'), $('content-pane'), { key: 'dsh-content-width', min: 260, max: 1400, flex: true, preview: true })
 
 // 编辑器 Tab 缩进（插入 2 空格）
 $('editor').addEventListener('keydown', (e) => {
