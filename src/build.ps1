@@ -184,7 +184,7 @@ if (-not (Test-Path $mainExe)) {
     --set-version-string 'FileDescription' 'DeepSeek Harness 懒人客户端' `
     --set-version-string 'ProductName' 'DeepSeek Harness' `
     --set-version-string 'CompanyName' '蓝色大肥鱼' `
-    --set-product-version '0.3.1.0' --set-file-version '0.3.1.0' | Out-Null
+    --set-product-version '0.3.2.0' --set-file-version '0.3.2.0' | Out-Null
 Write-Host "    桌面端就绪：$mainExe"
 
 Write-Host '==> 3/5 编译 launcher.exe（浏览器模式备选）与 uninstaller.exe（卸载器）'
@@ -205,7 +205,7 @@ if ($LASTEXITCODE -ne 0) { throw 'uninstaller.exe 编译失败' }
     --set-version-string 'FileDescription' 'DeepSeek Harness 客户端 卸载程序' `
     --set-version-string 'ProductName' 'DeepSeek Harness' `
     --set-version-string 'CompanyName' '蓝色大肥鱼' `
-    --set-product-version '0.3.1.0' --set-file-version '0.3.1.0' | Out-Null
+    --set-product-version '0.3.2.0' --set-file-version '0.3.2.0' | Out-Null
 Write-Host "    卸载器就绪：$root\uninstaller.exe"
 
 Write-Host '==> 4/6 代码签名（防杀毒软件误报）'
@@ -275,7 +275,7 @@ $refs3 = @(
     '/r:System.Management.dll',
     '/r:Microsoft.CSharp.dll'
 )
-$outExe = 'D:\DeepSeek Harness\deepseek-harness-client-v0.3.1.exe'
+$outExe = 'D:\DeepSeek Harness\deepseek-harness-client-v0.3.2.exe'
 & $csc /nologo /target:winexe /optimize+ "/win32icon:$iconOut" "/win32manifest:$srcDir\app.manifest" $refs3 "/resource:$payload,DSHPayload.zip" "/resource:$buildDir\logo.png,DSHLogo.png" "/resource:$buildDir\icon-desktop.png,DSHIconDesktop.png" "/resource:$buildDir\icon-rocket.png,DSHIconRocket.png" "/resource:$buildDir\icon-node.png,DSHIconNode.png" "/out:$outExe" "$srcDir\Installer.cs" "$srcDir\InstallerUI.cs"
 if ($LASTEXITCODE -ne 0) { throw '安装程序编译失败' }
 # 安装器也补上版本信息（否则右键属性显示 0.0.0.0）
@@ -284,11 +284,11 @@ if ($LASTEXITCODE -ne 0) { throw '安装程序编译失败' }
     --set-version-string 'FileDescription' 'DeepSeek Harness 懒人客户端 安装程序' `
     --set-version-string 'ProductName' 'DeepSeek Harness' `
     --set-version-string 'CompanyName' '蓝色大肥鱼' `
-    --set-product-version '0.3.1.0' --set-file-version '0.3.1.0' | Out-Null
+    --set-product-version '0.3.2.0' --set-file-version '0.3.2.0' | Out-Null
 Sign-Exe $outExe
 
 Write-Host '==> 7/7 打包便携 zip（解压后得到 DeepSeek Harness 文件夹）'
-$zip = 'D:\DeepSeek Harness\deepseek-harness-client-v0.3.1.zip'
+$zip = 'D:\DeepSeek Harness\deepseek-harness-client-v0.3.2.zip'
 if (Test-Path $zip) { Remove-Item $zip -Force }
 $zipStage = Join-Path $env:TEMP 'dsh-zip-stage'
 if (Test-Path $zipStage) { Remove-Item $zipStage -Recurse -Force }
