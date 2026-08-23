@@ -339,7 +339,7 @@ function Start-Server {
 
     Write-Step "正在启动 DeepSeek Harness 服务 http://127.0.0.1:$port ..."
     $runScript = Join-Path $PSScriptRoot 'run-server.ps1'
-    $runArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$runScript`" -Port $port"
+    $runArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$runScript`" -Port $port -NoOpen"
     $serverProc = Start-Process powershell.exe -ArgumentList $runArgs -WindowStyle Normal -WorkingDirectory $script:ClientRoot
 
     # 轮询等待服务就绪

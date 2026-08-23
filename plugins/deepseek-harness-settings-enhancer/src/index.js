@@ -580,4 +580,184 @@ export function apply(ctx) {
       }
     },
   }))
+
+  // ============================================================
+  //  系统信息 & 更新通道
+  // ============================================================
+  const CLIENT_ROOT = (() => {
+    // 客户端根目录：从插件运行位置推断（plugins/xxx/... 的父辈）或固定回退
+    const candidates = [
+      path.resolve(path.dirname(import.meta.url), '..', '..', '..'),   // profile node_modules/deepseek-harness-settings-enhancer/src -> 上 3 级 = profile
+      'D:\\DeepSeek Harness\\懒人客户端',
+    ]
+    for (const c of candidates) {
+      try {
+        if (fs.existsSync(path.join(c, 'app', 'node_modules', '@deepseek-ai', 'dsh', 'package.json'))) return c
+      } catch (e) { }
+    }
+    return candidates[candidates.length - 1]
+  })()
+
+  function dshCoreVersion() {
+    // 1) 从当前进程入口推断（node ...\dsh\lib\bin.js web）
+    try {
+      const entry = process.argv && process.argv[1]
+      if (entry && /dsh[\\/]lib[\\/]bin\.js$/.test(entry)) {
+        const pj = JSON.parse(fs.readFileSync(path.resolve(path.dirname(entry), '..', 'package.json'), 'utf8'))
+        if (pj && pj.name === '@deepseek-ai/dsh' && pj.version) return pj.version
+      }
+    } catch (e) { }
+    // 2) 客户端 app 目录内的 dsh 主包
+    try {
+      const pj = JSON.parse(fs.readFileSync(path.join(CLIENT_ROOT, 'app', 'node_modules', '@deepseek-ai', 'dsh', 'package.json'), 'utf8'))
+      if (pj && pj.version) return pj.version
+    } catch (e) { }
+    return null
+  }
+
+  function clientVersion() {
+    try {
+      const { execSync } = require('node:child_process')
+      const out = execSync('git -C ' + JSON.stringify(CLIENT_ROOT) + ' describe --tags --always 2>nul', { encoding: 'utf8', timeout: 8000 })
+      return String(out).trim() || null
+    } catch (e) { }
+    return null
+  }
+
+  // ---------- npm 最新版本查询（10 分钟缓存） ----------
+  let npmCheck = null
+  let npmCheckAt = 0
+  const NPM_SOURCES = [
+    { host: 'https://registry.npmmirror.com/@deepseek-ai/dsh', prefer: true },
+    { host: 'https://registry.npmjs.org/@deepseek-ai/dsh', prefer: false },
+  ]
+
+  function queryNpm() {
+    return new Promise((resolve) => {
+      const doNext = (idx) => {
+        if (idx >= NPM_SOURCES.length) { resolve(null); return }
+        const u = NPM_SOURCES[idx].host
+        const req = https.get(u, { headers: { 'User-Agent': 'deepseek-harness-settings-enhancer', Accept: 'application/json' }, timeout: 12000 }, (res) => {
+          let body = ''
+          res.on('data', (d) => {
+            body += d
+            if (body.length > 3 * 1024 * 1024) { req.destroy(); doNext(idx + 1) }
+          })
+          res.on('end', () => {
+            try {
+              const j = JSON.parse(body)
+              const tags = (j['dist-tags'] || {})
+              const latest = tags.latest || null
+              const next = tags.next || null
+              const versions = Object.keys(j.versions || {})
+              const time = j.time || {}
+              resolve({ latest, next, versions: versions.slice(-12), published: time[latest] || null })
+            } catch (e) { doNext(idx + 1) }
+          })
+          res.on('error', () => doNext(idx + 1))
+        })
+        req.on('error', () => doNext(idx + 1))
+        req.on('timeout', () => { req.destroy(); doNext(idx + 1) })
+      }
+      doNext(0)
+    })
+  }
+
+  async function checkUpdate() {
+    if (npmCheck && Date.now() - npmCheckAt < 600000) return npmCheck
+    const npm = await queryNpm()
+    const current = dshCoreVersion()
+    const client = clientVersion()
+    let github = null
+    try {
+      const gitReq = await new Promise((resolve, reject) => {
+        const r = https.get('https://api.github.com/repos/Amnesia-accompany/deepseek-harness-client/releases/latest', {
+          headers: { 'User-Agent': 'deepseek-harness-settings-enhancer' }, timeout: 10000,
+        }, (res) => {
+          let b = ''
+          res.on('data', (d) => { b += d })
+          res.on('end', () => resolve(b))
+        })
+        r.on('error', reject)
+        r.on('timeout', () => { r.destroy(); reject(new Error('timeout')) })
+      })
+      const j = JSON.parse(gitReq)
+      if (j && j.tag_name) github = { tag: j.tag_name, name: j.name || '', url: j.html_url || '', published: j.published_at || '' }
+    } catch (e) { github = null }
+    npmCheck = {
+      ok: true,
+      current,
+      client,
+      npm: npm ? { latest: npm.latest, next: npm.next, published: npm.published } : null,
+      github,
+      hasUpdate: !!(npm && npm.latest && current && npm.latest !== current),
+      at: Date.now(),
+    }
+    npmCheckAt = Date.now()
+    return npmCheck
+  }
+
+  // 系统信息
+  ctx.effect(() => webServer.register({
+    kind: 'exact',
+    path: '/api/dshmgr/system-info',
+    handler: async (req, res) => {
+      const info = {
+        ok: true,
+        dshVersion: dshCoreVersion(),
+        clientVersion: clientVersion(),
+        node: process.version || '',
+        platform: process.platform + ' ' + process.arch,
+        pid: process.pid,
+        port: tryPort(),
+        clientRoot: CLIENT_ROOT,
+      }
+      json(res, info)
+    },
+  }))
+
+  function tryPort() {
+    try {
+      const args = process.argv || []
+      for (let i = 0; i < args.length; i++) {
+        if ((args[i] === '--port' || args[i] === '-p') && args[i + 1]) return args[i + 1]
+      }
+    } catch (e) { }
+    return null
+  }
+
+  // 检查更新
+  ctx.effect(() => webServer.register({
+    kind: 'exact',
+    path: '/api/dshmgr/update-check',
+    handler: async (req, res) => {
+      const force = /[?&]force=1/.test(req.url || '')
+      if (force) { npmCheck = null; npmCheckAt = 0 }
+      json(res, await checkUpdate())
+    },
+  }))
+
+  // 执行更新（后台运行客户端更新脚本，前端轮询结果文件）
+  ctx.effect(() => webServer.register({
+    kind: 'exact',
+    path: '/api/dshmgr/update-dsh',
+    handler: async (req, res) => {
+      const { spawn } = require('node:child_process')
+      const logFile = path.join(CLIENT_ROOT, 'data', 'update.log')
+      try { fs.mkdirSync(path.dirname(logFile), { recursive: true }) } catch (e) { }
+      const ps1 = path.join(CLIENT_ROOT, 'scripts', 'dsh-client.ps1')
+      if (!fs.existsSync(ps1)) { json(res, { ok: false, error: '未找到更新脚本：' + ps1 }); return }
+      const out = fs.openSync(logFile, 'w')
+      try {
+        spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1, '-Mode', 'update'], {
+          cwd: CLIENT_ROOT, detached: false, stdio: ['ignore', out, out],
+        })
+        json(res, { ok: true, log: logFile })
+      } catch (e) {
+        json(res, { ok: false, error: String(e.message || e) })
+      } finally {
+        try { fs.closeSync(out) } catch (e) { }
+      }
+    },
+  }))
 }

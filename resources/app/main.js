@@ -170,7 +170,7 @@ async function startServer() {
     fs.writeFileSync(LOG_FILE, '=== ' + new Date().toLocaleString() + ' 服务启动 ===\r\n');
   } catch (e) { }
 
-  serverProc = spawn(nodeExe, [DSH_BIN, 'web', '--host', '127.0.0.1', '--port', String(port)], {
+  serverProc = spawn(nodeExe, [DSH_BIN, 'web', '--host', '127.0.0.1', '--port', String(port), '--no-open'], {
     cwd: WORKSPACE,
     windowsHide: true,
     env: Object.assign({}, process.env, {

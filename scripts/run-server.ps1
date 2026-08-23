@@ -3,7 +3,7 @@
 #  由 dsh-client.ps1 在新窗口启动；关闭本窗口 = 停止服务
 # ============================================================
 
-param([int]$Port = 3080)
+param([int]$Port = 3080, [switch]$NoOpen)
 
 $ErrorActionPreference = 'Stop'
 
@@ -44,7 +44,11 @@ Write-Host '  ==============================================' -ForegroundColor C
 Write-Host ''
 
 try {
-    & $node $dsh web --host 127.0.0.1 --port $Port
+    if ($NoOpen) {
+        & $node $dsh web --host 127.0.0.1 --port $Port --no-open
+    } else {
+        & $node $dsh web --host 127.0.0.1 --port $Port
+    }
 } catch {
     Write-Host ''
     Write-Host "启动失败：$_" -ForegroundColor Red

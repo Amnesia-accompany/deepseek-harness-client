@@ -321,6 +321,87 @@ function MarketPage() {
   )
 }
 
+// ---------- 系统信息 & 更新通道页面 ----------
+function SysInfoPage() {
+  const [info, setInfo] = React.useState(null)
+  const [check, setCheck] = React.useState(null)
+  const [busy, setBusy] = React.useState('')
+  const [err, setErr] = React.useState('')
+
+  function loadInfo() {
+    api('/api/dshmgr/system-info').then((r) => {
+      if (r && r.ok) setInfo(r)
+      else setErr((r && r.error) || '加载失败')
+    }).catch((e) => setErr(String(e && e.message || e)))
+  }
+  React.useEffect(() => { loadInfo() }, [])
+
+  function doCheck(force) {
+    setBusy('check'); setErr('')
+    api('/api/dshmgr/update-check' + (force ? '?force=1' : '')).then((r) => {
+      setBusy('')
+      if (r && r.ok) setCheck(r)
+      else setErr((r && r.error) || '检查失败')
+    }).catch((e) => { setBusy(''); setErr(String(e && e.message || e)) })
+  }
+  React.useEffect(() => { doCheck(false) }, [])
+
+  function doUpdate() {
+    if (!confirm('开始更新 DeepSeek Harness 核心（npm @deepseek-ai/dsh@latest）？\n更新在后台进行，完成后请重启客户端生效。')) return
+    setBusy('update'); setErr('')
+    api('/api/dshmgr/update-dsh', {}).then((r) => {
+      setBusy('')
+      if (r && r.ok) alert('更新已在后台启动！\n稍后到「系统信息」重新检查版本；完成后重启蓝色大肥鱼DSH.exe 生效。\n日志：' + (r.log || ''))
+      else alert('启动更新失败：' + ((r && r.error) || '未知'))
+    }).catch((e) => { setBusy(''); alert('启动更新失败：' + String(e && e.message || e)) })
+  }
+
+  const Row = (label, value) => React.createElement('div', { className: 'mgr-item' },
+    React.createElement('div', null,
+      React.createElement('div', { className: 'mgr-name' }, label),
+      React.createElement('div', { className: 'mgr-desc' }, String(value == null ? '—' : value)),
+    ),
+  )
+
+  const hasUpd = check && check.hasUpdate
+  const latestLabel = check && check.npm ? check.npm.latest : '—'
+
+  return React.createElement('div', { className: 'mgr-page' },
+    React.createElement('div', { className: 'mgr-sub' }, '当前系统与 DeepSeek Harness 核心版本信息（来源：npm registry @deepseek-ai/dsh 与 GitHub）'),
+    info ? React.createElement('div', { className: 'mgr-list' },
+      Row('DSH 核心版本（DeepSeek Harness）', info.dshVersion),
+      Row('客户端版本（懒人客户端）', info.clientVersion),
+      Row('Node.js 版本', info.node),
+      Row('平台架构', info.platform),
+      Row('服务端口', 'http://127.0.0.1:' + (info.port || '?')) ,
+      Row('客户端安装位置', info.clientRoot),
+    ) : React.createElement('div', { className: 'mgr-empty' }, '加载系统信息…'),
+    err ? React.createElement('div', { className: 'mgr-empty' }, err) : null,
+    React.createElement('div', { className: 'mgr-form', style: { marginTop: 14 } },
+      React.createElement('div', { className: 'mgr-name', style: { marginBottom: 8 } }, '更新通道'),
+      React.createElement('div', { className: 'mgr-desc', style: { marginBottom: 10 } },
+        check && check.npm
+          ? (hasUpd
+              ? '检测到新版本：' + latestLabel + '（当前 ' + check.current + '）' + (check.npm.published ? '，发布于 ' + String(check.npm.published).slice(0, 10) : '')
+              : '已是最新版本：' + latestLabel)
+          : check ? '无法获取 npm 最新版本（网络或代理问题），可稍后重试。' : '查询 npm 最新版本…',
+      ),
+      React.createElement('div', { className: 'mgr-row' },
+        React.createElement('button', { className: 'mgr-btn', disabled: busy !== '', onClick: () => doCheck(true) }, busy === 'check' ? '检查中…' : '检查更新'),
+        React.createElement('button', { className: 'mgr-btn blue', disabled: busy !== '' || !hasUpd, onClick: doUpdate }, busy === 'update' ? '启动中…' : '立即更新'),
+      ),
+      React.createElement('div', { className: 'mgr-desc', style: { marginTop: 8 } },
+        '更新命令：npm install @deepseek-ai/dsh@latest（npmmirror 镜像，自动回退官方源），更新后重启客户端生效。',
+      ),
+      check && check.github ? React.createElement('div', { className: 'mgr-desc', style: { marginTop: 6 } },
+        '客户端仓库最新版：', check.github.tag,
+        '（', String(check.github.published || '').slice(0, 10), '）',
+        React.createElement('button', { className: 'mgr-btn', style: { marginLeft: 8, padding: '2px 8px' }, onClick: () => window.open(check.github.url, '_blank') }, '查看'),
+      ) : null,
+    ),
+  )
+}
+
 function apply(ctx) {
   injectCss()
   const slots = ctx.get('slots')
@@ -337,6 +418,10 @@ function apply(ctx) {
   slots.inject('settings.section', () => slots.register(
     { name: 'settings.section', id: 'dshmgr-market', order: 50, label: '插件市场' },
     () => React.createElement(MarketPage),
+  ))
+  slots.inject('settings.section', () => slots.register(
+    { name: 'settings.section', id: 'dshmgr-sysinfo', order: 60, label: '系统信息' },
+    () => React.createElement(SysInfoPage),
   ))
 }
 
