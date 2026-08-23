@@ -2,6 +2,48 @@
 // 启动流程：查询状态 → 无 Key 先填 Key → 等主进程把服务拉起 → 加载页面
 const $ = (id) => document.getElementById(id);
 
+// ================= VS Code 风格文件图标 =================
+// 实心彩色文档 + 白色类型符号（对照 VS Code 默认文件图标主题）
+function docIcon(color, label) {
+  return '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
+    + '<path d="M2.7 2.6h7.1L12.4 5v8.4a.9.9 0 0 1-.9.9H2.7a.9.9 0 0 1-.9-.9V3.5a.9.9 0 0 1 .9-.9z" fill="' + color + '"/>'
+    + '<path d="M9.8 2.6l2.6 2.4H9.8z" fill="rgba(255,255,255,0.30)"/>'
+    + '<text x="8" y="11.9" font-size="' + (label.length > 2 ? 5.2 : 6.4) + '" font-weight="800" text-anchor="middle" '
+    + 'fill="#ffffff" font-family="Segoe UI, Consolas, sans-serif" letter-spacing="-0.2">' + label + '</text>'
+    + '</svg>';
+}
+const ICON_FOLDER = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">'
+  + '<path d="M1.8 4A1.3 1.3 0 0 1 3.1 2.7h3l1.3 1.4h5.5A1.3 1.3 0 0 1 14.2 5.4v6.6a1.3 1.3 0 0 1-1.3 1.3H3.1a1.3 1.3 0 0 1-1.3-1.3z" fill="#56a3d3"/>'
+  + '<path d="M1.8 6.2h12.4v6.6a1 1 0 0 1-1 1H2.8a1 1 0 0 1-1-1z" fill="#8ac9ea"/>'
+  + '</svg>';
+// 扩展名 → [颜色, 标识]（参考 VS Code Seti/默认文件图标配色）
+const EXT_ICONS = {
+  js: ['#e8b40c', 'JS'], mjs: ['#e8b40c', 'JS'], cjs: ['#e8b40c', 'JS'], jsx: ['#e8b40c', 'JSx'],
+  ts: ['#3178c6', 'TS'], tsx: ['#3178c6', 'TSx'],
+  json: ['#3498db', '{}'], jsonc: ['#3498db', '{}'],
+  html: ['#e37933', '</>'], htm: ['#e37933', '</>'], xhtml: ['#e37933', '</>'], vue: ['#41b883', 'V'],
+  css: ['#42a5f5', '#'], scss: ['#d6528f', 'S'], less: ['#3277d3', 'L'],
+  md: ['#4488cc', 'M'], markdown: ['#4488cc', 'M'],
+  py: ['#3572a5', 'Py'], pyw: ['#3572a5', 'Py'],
+  yml: ['#c8a03a', 'Y'], yaml: ['#c8a03a', 'Y'],
+  ps1: ['#2b579a', 'PS'], bat: ['#6a6f76', 'BA'], cmd: ['#6a6f76', 'BA'],
+  sh: ['#4d9a52', '$'], bash: ['#4d9a52', '$'], zsh: ['#4d9a52', '$'],
+  c: ['#4d6fac', 'C'], h: ['#4d6fac', 'H'], cpp: ['#4d6fac', 'C+'], hpp: ['#4d6fac', 'H+'], cc: ['#4d6fac', 'C+'],
+  java: ['#e76f00', 'J'], go: ['#00add8', 'GO'], rs: ['#ce5c31', 'RS'], php: ['#777bb3', 'P'],
+  rb: ['#d6528f', 'RB'], cs: ['#68217a', 'C#'], kt: ['#7f52ff', 'K'], swift: ['#f05138', 'S'],
+  sql: ['#6a9fd4', 'SQ'], xml: ['#e37933', '<>'], svg: ['#a074c4', '<>'],
+  png: ['#a074c4', 'IMG'], jpg: ['#a074c4', 'IMG'], jpeg: ['#a074c4', 'IMG'], gif: ['#a074c4', 'IMG'],
+  ico: ['#a074c4', 'IMG'], webp: ['#a074c4', 'IMG'],
+  toml: ['#9b5fc7', 'TO'], ini: ['#9b5fc7', 'IN'], conf: ['#9b5fc7', 'CF'], cfg: ['#9b5fc7', 'CF'],
+  txt: ['#8a919b', 'TXT'], csv: ['#6a9fd4', 'CV'],
+};
+function fileIconSvg(name) {
+  const dot = String(name || '').lastIndexOf('.');
+  const ext = dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
+  const hit = EXT_ICONS[ext];
+  return hit ? docIcon(hit[0], hit[1]) : docIcon('#9a9a9a', 'F');
+}
+
 let status = null;
 
 // 视图切换（.show 类驱动，配合 CSS 过渡动画）
@@ -227,7 +269,7 @@ function makeRootNode(root) {
   }
   const icon = document.createElement('span');
   icon.className = 'ticon';
-  icon.textContent = root.dir ? '📁' : '📄';
+  icon.innerHTML = root.dir ? ICON_FOLDER : fileIconSvg(it.name);
   const name = document.createElement('span');
   name.className = 'tname';
   name.textContent = it.name;
@@ -293,7 +335,7 @@ function makeNode(it, parentRel) {
   }
   const icon = document.createElement('span');
   icon.className = 'ticon';
-  icon.textContent = it.dir ? '📁' : '📄';
+  icon.innerHTML = it.dir ? ICON_FOLDER : fileIconSvg(it.name);
   const name = document.createElement('span');
   name.className = 'tname';
   name.textContent = it.name;
@@ -526,6 +568,114 @@ function syncScroll() {
 
 $('editor').addEventListener('scroll', syncScroll);
 
+// ---------- 代码总览 minimap（VS Code 风格） ----------
+const MINIMAP_W = 96;
+const MINIMAP_COLORS = { kw: '#0000ff', str: '#a31515', com: '#008000', num: '#098658', tag: '#800000', fn: '#795e26', attr: '#001080', '': '#9aa0a6' };
+let mmRaf = 0;
+
+function renderMinimap() {
+  const cv = $('minimap');
+  if (!cv) return;
+  const f = cur();
+  const val = f ? f.content : '';
+  const lines = val.split('\n');
+  const n = lines.length;
+  const box = cv.parentElement;
+  const bh = box.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  if (n <= 1 || bh <= 0 || n > 60000) { cv.style.display = 'none'; return; }
+  cv.style.display = 'block';
+  cv.width = MINIMAP_W * dpr;
+  cv.height = bh * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, MINIMAP_W, bh);
+  const lang = langForPath(f.name);
+  // 大文件（>12000 行）用快速启发式着色，避免状态机开销；小文件用完整语法着色
+  const toks = n <= 12000 ? tokenizeLines(lines, lang) : null;
+  const pixH = Math.max(1, Math.min(2.4, bh / n));
+  const maxX = MINIMAP_W - 8;
+  for (let li = 0; li < n; li++) {
+    const line = lines[li] || '';
+    const tos = toks ? (toks[li] || []) : null;
+    const y = li * pixH;
+    if (!tos) {
+      // 快速模式：单行一个主色（注释/字符串/数字/关键字启发）
+      const col = MINIMAP_COLORS[quickLineColor(line)] || MINIMAP_COLORS[''];
+      ctx.fillStyle = col;
+      ctx.fillRect(4, y + (pixH - 1) / 2, maxX - 4, Math.max(1, Math.min(2, pixH)));
+      continue;
+    }
+    // 按 token 长度加权采样上色，模拟 VS Code minimap 的缩略代码
+    let x = 4;
+    const totalLen = Math.max(30, line.length || 30);
+    for (let ti = 0; ti < tos.length && x < maxX; ti++) {
+      const tok = tos[ti];
+      const col = MINIMAP_COLORS[tok.c] || MINIMAP_COLORS[''];
+      const px = Math.max(1, Math.round((tok.t.length / totalLen) * (maxX - x - (tos.length - ti))));
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y + (pixH - 1) / 2, Math.min(px, maxX - x), Math.max(1, Math.min(2, pixH)));
+      x += px + 1;
+    }
+  }
+  // 视口高亮框（随滚动移动，VS Code minimap 同款）
+  const ed = $('editor');
+  const totalH = n * LINE_H + PAD_V * 2;
+  const vtop = ed.scrollTop;
+  const vh = ed.clientHeight;
+  const viewH = Math.max(6, (vh / totalH) * bh);
+  const viewY = (vtop / totalH) * bh;
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, Math.max(0.5, viewY + 0.5), MINIMAP_W - 1, Math.min(bh - viewY - 1, Math.max(1, viewH - (viewY < 0.5 ? -viewY : 0))));
+}
+
+// 大文件 minimap 快速着色（启发式，不跑完整状态机）
+function quickLineColor(line) {
+  const t = (line || '').trim();
+  if (!t) return '';
+  if (t.startsWith('//') || t.startsWith('/*') || t.startsWith('*') || t.startsWith('#') || t.startsWith('<!--')) return 'com';
+  const s = line || '';
+  const qi = s.search(/["']/);
+  const ci = s.search(/\/\/|#|--/);
+  if (qi !== -1 && (ci === -1 || qi < ci)) return 'str';
+  if (ci !== -1) return 'com';
+  if (/\b(true|false|null|function|const|let|var|import|export|return|if|else|def|class|new|for|while|async|await)\b/.test(t)) return 'kw';
+  if (/^\s*[-+]?\d/.test(t) || /:\s*\d/.test(t)) return 'num';
+  return '';
+}
+
+function minimizeScroll() {
+  if (mmRaf) return;
+  mmRaf = requestAnimationFrame(() => { mmRaf = 0; renderMinimap(); });
+}
+
+function minimapJump(e) {
+  const cv = $('minimap');
+  const ed = $('editor');
+  const rect = cv.getBoundingClientRect();
+  if (!rect.height) return;
+  const ratio = (e.clientY - rect.top) / rect.height;
+  const n = ed.value.split('\n').length;
+  const line = Math.max(1, Math.min(n, Math.round(ratio * n)));
+  const totalH = n * LINE_H + PAD_V * 2;
+  ed.scrollTop = Math.max(0, (line - 1) * LINE_H - ed.clientHeight / 2);
+  syncScroll();
+  renderMinimap();
+}
+
+let mmDragging = false;
+$('minimap').addEventListener('mousedown', (e) => {
+  mmDragging = true;
+  minimapJump(e);
+});
+document.addEventListener('mousemove', (e) => {
+  if (mmDragging) minimapJump(e);
+});
+document.addEventListener('mouseup', () => { mmDragging = false; });
+$('editor').addEventListener('scroll', minimizeScroll);
+
 function scheduleOverlay() {
   if (overlayTimer) clearTimeout(overlayTimer);
   overlayTimer = setTimeout(() => { overlayTimer = null; renderOverlay(); }, 80);
@@ -560,7 +710,10 @@ function renderOverlay() {
   const hl = highlightLines(lines, lang);
   $('highlight').innerHTML = hl === null ? escHtml(val) : hl;
   syncScroll();
+  renderMinimap();
 }
+
+window.addEventListener('resize', () => { renderOverlay(); });
 
 // —— 轻量语法高亮（VSCode Light+ 配色） ——
 const HL_KEYWORDS = {
@@ -668,6 +821,16 @@ function tokenizeLine(line, lang, kwSet, useBlock, lc, state) {
       const km = rest.match(/^[A-Za-z_$][\w$]*/);
       if (km && kwSet.has(km[0])) { tokens.push({ t: km[0], c: 'kw' }); i += km[0].length; continue; }
     }
+    // 函数名：标识符后接 '('（JS/类 C 语言，VS Code #795E26）
+    if (lang === 'javascript' || lang === 'clike') {
+      const fm = rest.match(/^[A-Za-z_$][\w$]*(?=\s*\()/);
+      if (fm) { tokens.push({ t: fm[0], c: 'fn' }); i += fm[0].length; continue; }
+    }
+    // HTML 属性名：name= 形式（VS Code #001080）
+    if (lang === 'markup') {
+      const am = rest.match(/^[A-Za-z_:][\w:.-]*(?=\s*=)/);
+      if (am) { tokens.push({ t: am[0], c: 'attr' }); i += am[0].length; continue; }
+    }
     const nm = rest.match(/^(?:0x[\da-fA-F]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)/);
     if (nm) { tokens.push({ t: nm[0], c: 'num' }); i += nm[0].length; continue; }
     let j = i + 1;
@@ -687,7 +850,7 @@ function tokenizeLine(line, lang, kwSet, useBlock, lc, state) {
 }
 
 function highlightLines(lines, lang) {
-  if (!lang || lines.length > 4000) return null; // 超长文件仅行号
+  if (!lang || lines.length > 12000) return null; // 超长文件仅行号
   const toks = tokenizeLines(lines, lang);
   let html = '';
   for (let i = 0; i < lines.length; i++) {

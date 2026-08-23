@@ -232,17 +232,22 @@
       font-size: 13px; line-height: 20px; text-align: right; color: #b0b8c4;
       padding: 12px 8px 0 0; white-space: pre; }
     #codeArea { flex: 1; min-width: 0; position: relative; }
-    #highlight { position: absolute; inset: 0; margin: 0; padding: 12px 14px;
+    #highlight { position: absolute; inset: 0; right: 96px; margin: 0; padding: 12px 14px;
       font-family: "Cascadia Code", Consolas, "Courier New", monospace;
       font-size: 13px; line-height: 20px; tab-size: 2; color: #1f2430;
       white-space: pre; overflow: hidden; pointer-events: none; }
-    #editor { position: absolute; inset: 0; border: 0; outline: none; resize: none;
+    #editor { position: absolute; inset: 0; right: 96px; border: 0; outline: none; resize: none;
       background: transparent; color: transparent; caret-color: #1f2430;
       font-family: "Cascadia Code", Consolas, "Courier New", monospace;
       font-size: 13px; line-height: 20px; tab-size: 2; white-space: pre;
       overflow: auto; padding: 12px 14px; }
     #editor::selection { background: rgba(31,111,214,0.25); color: transparent; }
     #editor::placeholder { color: #b0b8c4; }
+    /* 代码总览 minimap（VS Code 风格：右侧彩点 + 视口框） */
+    #minimap { position: absolute; top: 0; right: 0; bottom: 0; width: 96px;
+      background: #ffffff; border-left: 1px solid #eef1f5; cursor: pointer;
+      user-select: none; display: none; z-index: 3; }
+    #minimap:hover { background: #fafbfc; }
     /* 编辑器滚动条美化 */
     #editor::-webkit-scrollbar { width: 8px; height: 8px; }
     #editor::-webkit-scrollbar-thumb { background: #d0d7e2; border-radius: 4px; }
@@ -253,6 +258,8 @@
     .tok-com { color: #008000; font-style: italic; }
     .tok-num { color: #098658; }
     .tok-tag { color: #800000; }
+    .tok-fn { color: #795e26; }
+    .tok-attr { color: #001080; }
     #editorBar { font-size: 11px; color: #8a94a6; padding: 4px 10px;
       border-top: 1px solid #f0f2f6; background: #fafbfc; display: flex;
       justify-content: space-between; }
@@ -473,6 +480,7 @@
         <div id="codeArea">
           <pre id="highlight" aria-hidden="true"></pre>
           <textarea id="editor" spellcheck="false" placeholder="在左侧文件树中选择一个文本文件，或点击「+ 新建」创建文件"></textarea>
+          <canvas id="minimap" aria-hidden="true"></canvas>
         </div>
       </div>
       <div id="editorBar"><span id="editorPath"></span><span id="editorDirty"></span></div>
